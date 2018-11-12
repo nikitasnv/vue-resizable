@@ -31,5 +31,10 @@
     "webpack-dev-server": "^3.1.10"
   },
   "author": "NikSnV",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nikitasnv/vue-resizable.git"
+  },
+  "homepage": "https://github.com/nikitasnv/vue-resizable"
 }
