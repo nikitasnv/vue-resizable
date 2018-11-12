@@ -18,18 +18,31 @@
 npm install vue-resizable --save
 ```
 
-## Usage
+## Basic usage
 
 ```vue
+<template>
+    <vue-resizable>
+        <div class="resizable-content"></div>
+    </vue-resizable>
+</template>
+
 <script>
 import VueResizable from 'vue-resizable'
 
 export default {
     name: "YourApp",
-    components: {VueResizable},
-    ...
+    components: {VueResizable}
 }
 </script>
+
+<style scoped>
+    .resizable-content {
+        height: 100%;
+        width: 100%;
+        background-color: aqua;
+    }
+</style>
 ```
 
 ## Properties
