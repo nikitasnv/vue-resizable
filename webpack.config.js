@@ -8,7 +8,7 @@ module.exports = env => {
     return {
         devtool: "source-map",
         watch: env_mode,
-        entry: path.resolve(__dirname, env_mode ? '': 'src' , 'index.js'),
+        entry: path.resolve(__dirname, 'docs/index.js'),
         mode: env.NODE_ENV,
         output: {
             filename: 'main.js',
@@ -17,7 +17,7 @@ module.exports = env => {
         plugins: [
             new VueLoaderPlugin(),
             new HtmlWebpackPlugin({
-                template: 'index.html'
+                template:  path.resolve(__dirname, 'docs/index.html'),
             })
         ],
         resolve: {

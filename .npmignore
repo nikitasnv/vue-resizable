@@ -1,5 +1,4 @@
 node_modules/
-dist/index.html
-test/
 dev/
 .idea
+.git

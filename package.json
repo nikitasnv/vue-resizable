@@ -1,20 +1,18 @@
 {
   "name": "vue-resizable",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Vue2 component that allows to resize elements",
   "main": "dist/main.js",
   "jsnext:main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prod": "webpack --progress --config webpack.config.build.js --env.NODE_ENV=production",
+    "build": "webpack --progress --config webpack.config.build.js --env.NODE_ENV=production",
     "dev": "webpack-dev-server --env.NODE_ENV=development"
-  },
-  "peerDependencies": {
-    "vue": "^2.5.17"
   },
   "dependencies": {
     "@babel/core": "^7.0.0",
     "@babel/preset-env": "^7.1.0",
+    "vue": "^2.5.17",
     "webpack": "^4.22.0"
   },
   "devDependencies": {
@@ -36,5 +34,11 @@
     "type": "git",
     "url": "https://github.com/nikitasnv/vue-resizable.git"
   },
-  "homepage": "https://github.com/nikitasnv/vue-resizable"
+  "homepage": "https://github.com/nikitasnv/vue-resizable",
+  "keywords": [
+    "vue",
+    "component",
+    "resizable",
+    "resize"
+  ]
 }

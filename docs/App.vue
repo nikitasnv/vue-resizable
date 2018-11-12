@@ -1,7 +1,7 @@
 <template>
     <div>
         <div class="container">
-            <v-resizable class="resizable" ref="resizableComponent"
+            <vue-resizable class="resizable" ref="resizableComponent"
                          :active="handlers" :fit-parent="fit"
                          :max-width="maxW | checkEmpty" :max-height="maxH | checkEmpty"
                          :min-width="minW | checkEmpty" :min-height="minH | checkEmpty"
@@ -20,7 +20,7 @@
                         </tr>
                     </table>
                 </div>
-            </v-resizable>
+            </vue-resizable>
         </div>
         <div class="container table-block">
             <div class="table-row">
@@ -76,11 +76,11 @@
 </template>
 
 <script>
-    import VResizable from './src/components/vue-resizable'
+    import VueResizable from '../src/components/vue-resizable'
 
     export default {
         name: "App",
-        components: {VResizable},
+        components: {VueResizable},
         data() {
             const tW = 150;
             const tH = 150;
