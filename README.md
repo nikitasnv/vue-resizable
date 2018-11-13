@@ -51,11 +51,11 @@ export default {
 | Property            |  Data attribute    | Type    | Default | Description                                                                                                                                                                                                                                                                           |
 |:--------------------|------|:--------|:--------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | width               |   w   | [Number, String] | 200   | Width           
-| minWidth            |   minW   | Number  | 0    |  Minimal width     
-| maxWidth            |   maxW    | Number | undefined   | Maximal width
+| minWidth            |   minW   | Number  | 0    |  Minimum width     
+| maxWidth            |   maxW    | Number | undefined   | Maximum width
 | height               |  h   | [Number, String]  | 200    | Height                                                                                                                                                                                                                    |
-| minHeight        | minH | Number  | 0       | Minimal height                                                                                                                                                                                                                |
-| maxHeight    | maxH | Number  | undefined       | Maximal height                                                                                                                                                                                                                              |
+| minHeight        | minH | Number  | 0       | Minimum height                                                                                                                                                                                                                |
+| maxHeight    | maxH | Number  | undefined       | Maximum height                                                                                                                                                                                                                              |
 | left          |   l    | [Number, String] | 0    | Offset left from parent                                                                                                                                                                                                                                                     |
 | top       | t | [Number, String] | 0   | Offset top from parent          
 | active     |    | Array | ['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt']   | Active handlers for resize    
