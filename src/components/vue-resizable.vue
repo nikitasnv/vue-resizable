@@ -142,7 +142,7 @@
                     if (this.resizeState & 0x0001) {
                         if (this.w + diffX < this.minW)
                             this.offsetX = (diffX - (diffX = this.minW - this.w));
-                        else if (this.maxW && this.w + diffX > this.maxW && this.w + this.l < this.parent.width)
+                        else if (this.maxW && this.w + diffX > this.maxW && (!this.fitParent || this.w + this.l < this.parent.width))
                             this.offsetX = (diffX - (diffX = this.maxW - this.w));
                         else if (this.fitParent && this.l + this.w + diffX > this.parent.width)
                             this.offsetX = (diffX - (diffX = this.parent.width - this.l - this.w));
@@ -151,7 +151,7 @@
                     if (this.resizeState & 0x0010) {
                         if (this.h + diffY < this.minH)
                             this.offsetY = (diffY - (diffY = this.minH - this.h));
-                        else if (this.maxH && this.h + diffY > this.maxH && this.h + this.t < this.parent.height)
+                        else if (this.maxH && this.h + diffY > this.maxH && (!this.fitParent || this.h + this.t < this.parent.height))
                             this.offsetY = (diffY - (diffY = this.maxH - this.h));
                         else if (this.fitParent && this.t + this.h + diffY > this.parent.height)
                             this.offsetY = (diffY - (diffY = this.parent.height - this.t - this.h));
@@ -192,8 +192,10 @@
                         this.resizeState = ELEMENT_MASK[elClass];
 
                         const style = getComputedStyle ? getComputedStyle(this.$el.parentElement) : this.$el.parentElement.currentStyle;
-                        this.parent.height = parseFloat(style.height);
-                        this.parent.width = parseFloat(style.width);
+                        if (style) {
+                            this.parent.height = parseFloat(style.height);
+                            this.parent.width = parseFloat(style.width);
+                        }
                         this.$emit('resize:start', {left: this.l, top: this.t, width: this.w, height: this.h});
                         break;
                     }
