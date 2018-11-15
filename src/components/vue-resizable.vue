@@ -9,15 +9,14 @@
 
 <script>
     const ELEMENT_MASK = {
-        'resizable-r': 0x0001,
-        'resizable-rb': 0x0011,
-        'resizable-b': 0x0010,
-        'resizable-lb': 0x0110,
-        'resizable-l': 0x0100,
-        'resizable-lt': 0x1100,
-        'resizable-t': 0x1000,
-        'resizable-rt': 0x1001,
-
+        'resizable-r': {bit: 0x0001, cursor: 'e-resize'},
+        'resizable-rb': {bit: 0x0011, cursor: 'se-resize'},
+        'resizable-b': {bit: 0x0010, cursor: 's-resize'},
+        'resizable-lb': {bit: 0x0110, cursor: 'sw-resize'},
+        'resizable-l': {bit: 0x0100, cursor: 'w-resize'},
+        'resizable-lt': {bit: 0x1100, cursor: 'nw-resize'},
+        'resizable-t': {bit: 0x1000, cursor: 'n-resize'},
+        'resizable-rt': {bit: 0x1001, cursor: 'ne-resize'}
     };
 
     export default {
@@ -185,11 +184,12 @@
             handleDown(event) {
                 for (let elClass in ELEMENT_MASK) {
                     if (this.$el.contains(event.target) && event.target.classList.contains(elClass)) {
+                        document.body.style.cursor = ELEMENT_MASK[elClass].cursor;
                         event.preventDefault && event.preventDefault();
                         this.offsetX = this.offsetY = 0;
                         this.mouseX = event.clientX;
                         this.mouseY = event.clientY;
-                        this.resizeState = ELEMENT_MASK[elClass];
+                        this.resizeState = ELEMENT_MASK[elClass].bit;
 
                         const style = getComputedStyle ? getComputedStyle(this.$el.parentElement) : this.$el.parentElement.currentStyle;
                         if (style) {
@@ -204,6 +204,7 @@
             handleUp() {
                 if (this.resizeState !== 0) {
                     this.resizeState = 0;
+                    document.body.style.cursor = '';
                     this.$emit('resize:end', {left: this.l, top: this.t, width: this.w, height: this.h});
                 }
             }
