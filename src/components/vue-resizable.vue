@@ -55,7 +55,7 @@
             },
             active: {
                 default: () => ['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt'],
-                validator: (val) => new Set(['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt'].filter(value => val.indexOf(value) !== -1)).size === val.length,
+                validator: (val) => ['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt'].filter(value => val.indexOf(value) !== -1).length === val.length,
                 type: Array
             },
             fitParent: {

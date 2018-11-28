@@ -3,3 +3,4 @@ dist/
 .idea
 dev/
 package-lock.json
+test/unit/coverage

@@ -2,9 +2,15 @@
   "presets": [
     ["@babel/preset-env", {
       "targets": {
-        "browsers": ["last 2 versions", "ie >= 11"]
+        "browsers": ["last 2 versions", "ie >= 9"],
+        "node": "current"
       }
     }],
     "vue"
-  ]
+  ],
+  "env": {
+    "test": {
+      "plugins": [ "istanbul" ]
+    }
+  }
 }
