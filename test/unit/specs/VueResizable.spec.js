@@ -135,9 +135,17 @@ describe('VueResizable.vue', () => {
     });
 
     describe('Resize events', () => {
-        const vmWrapper = mount(VueResizable, {
+        const Parent = {
+            template: `
+                <div style="width: 672px; height: 672px;">
+                    <vue-resizable :width="200" :height="200" :minHeight="100" :minWidth="100" :maxHeight="300" :maxWidth="300" :fitParent="true"> 
+                    </vue-resizable>
+                </div>`,
+            components: {VueResizable}
+        };
+        const vmWrapper = mount(Parent, {
             attachToDocument: true
-        });
+        }).find(VueResizable);
         const elWrapper = vmWrapper.find('div.resizable-rb');
         const rect = vmWrapper.element.getBoundingClientRect();
         let fromX = rect.right;
@@ -157,8 +165,8 @@ describe('VueResizable.vue', () => {
             expect(vmWrapper.emitted()['resize:start'].length).to.equal(1);
             expect(vmWrapper.vm.mouseX).to.equal(fromX);
             expect(vmWrapper.vm.mouseY).to.equal(fromY);
-            expect(vmWrapper.vm.parent.width).to.not.equal(0);
-            expect(vmWrapper.vm.parent.height).to.not.equal(0);
+            expect(vmWrapper.vm.parent.width).to.equal(672);
+            expect(vmWrapper.vm.parent.height).to.equal(672);
             expect(vmWrapper.vm.resizeState).to.equal(0x0011);
             expect(document.body.style.cursor).to.equal('se-resize');
         });

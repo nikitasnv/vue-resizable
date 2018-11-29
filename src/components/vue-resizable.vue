@@ -190,12 +190,8 @@
                         this.mouseX = event.clientX;
                         this.mouseY = event.clientY;
                         this.resizeState = ELEMENT_MASK[elClass].bit;
-
-                        const style = getComputedStyle ? getComputedStyle(this.$el.parentElement) : this.$el.parentElement.currentStyle;
-                        if (style) {
-                            this.parent.height = parseFloat(style.height);
-                            this.parent.width = parseFloat(style.width);
-                        }
+                        this.parent.height = this.$el.parentElement.clientHeight;
+                        this.parent.width = this.$el.parentElement.clientWidth;
                         this.$emit('resize:start', {left: this.l, top: this.t, width: this.w, height: this.h});
                         break;
                     }
