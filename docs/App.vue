@@ -158,7 +158,6 @@
         color: #333333;;
         float: left;
         margin: 10px;
-        margin: 100px
     }
 
     #block1 {
