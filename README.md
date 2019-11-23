@@ -60,6 +60,7 @@ export default {
 | top       | t | [Number, String] | 0   | Offset top from parent          
 | active     |    | Array | ['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt']   | Active handlers for resize    
 | fitParent    |     | Boolean | false  | Respect parent's size on resizing
+| dragSelector |   |  String | undefined | Drag selector
 
 ## Events
 

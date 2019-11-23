@@ -167,7 +167,7 @@ describe('VueResizable.vue', () => {
             expect(vmWrapper.vm.mouseY).to.equal(fromY);
             expect(vmWrapper.vm.parent.width).to.equal(672);
             expect(vmWrapper.vm.parent.height).to.equal(672);
-            expect(vmWrapper.vm.resizeState).to.equal(0x0011);
+            expect(vmWrapper.vm.resizeState).to.equal(0b0011);
             expect(document.body.style.cursor).to.equal('se-resize');
         });
 

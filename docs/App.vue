@@ -1,7 +1,8 @@
 <template>
     <div>
         <div class="container">
-            <vue-resizable class="resizable" ref="resizableComponent"
+            <vue-resizable class="resizable" ref="resizableComponent" 
+                         :dragSelector="dragSelector"
                          :active="handlers" :fit-parent="fit"
                          :max-width="maxW | checkEmpty" :max-height="maxH | checkEmpty"
                          :min-width="minW | checkEmpty" :min-height="minH | checkEmpty"
@@ -9,23 +10,27 @@
                          :left="left" :top="top"
                          @resize:move="move" @resize:mount="mount" @resize:start="start" @resize:end="end">
                 <div class="block">
-                    <table>
-                        <tr>
-                            <td>w:{{width}}</td>
-                            <td>h:{{height}}</td>
-                        </tr>
-                        <tr>
-                            <td>l:{{left}}</td>
-                            <td>t:{{top}}</td>
-                        </tr>
-                    </table>
+                    <div class="drag-container-1">drag_1</div>
+                    <div class="table-container">
+                        <table>
+                            <tr>
+                                <td>w:{{width}}</td>
+                                <td>h:{{height}}</td>
+                            </tr>
+                            <tr>
+                                <td>l:{{left}}</td>
+                                <td>t:{{top}}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="drag-container-2">drag_2</div>
                 </div>
             </vue-resizable>
         </div>
         <div class="container table-block">
             <div class="table-row">
                 <div><h4>handlers:</h4></div>
-                <span v-for="handler in ['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt']">
+                <span v-for="handler in ['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt']" :key="handler" >
                     {{handler}}:<input type="checkbox" v-model="handlers" :value="handler"/>
                </span>
             </div>
@@ -90,7 +95,8 @@
                 height: tH, width: tW,
                 maxW: 250, maxH: 250,
                 minW: 100, minH: 100,
-                fit: true, event: ''
+                fit: true, event: '',
+                dragSelector: ".drag-container-1, .drag-container-2"
             };
         },
         methods: {
@@ -129,6 +135,7 @@
         width: 100%;
         background-color: aqua;
         display: flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
     }
@@ -151,6 +158,7 @@
         color: #333333;;
         float: left;
         margin: 10px;
+        margin: 100px
     }
 
     #block1 {
@@ -189,6 +197,24 @@
 
     .table-input {
         width: 50px
+    }
+
+    .drag-container-1,.drag-container-2 {
+        width: 100%;
+        height: 20px;
+        background: red;
+        color: white;
+        text-align: center;
+        cursor: pointer;
+    }
+
+    .table-container {
+        flex: 1;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
     }
 
 </style>
