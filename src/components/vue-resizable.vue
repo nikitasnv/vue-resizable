@@ -126,13 +126,13 @@
             document.documentElement.addEventListener('mousemove', this.handleMove, true);
             document.documentElement.addEventListener('mousedown', this.handleDown, true);
             document.documentElement.addEventListener('mouseup', this.handleUp, true);
-            this.$emit('resize:mount', {left: this.l, top: this.t, width: this.w, height: this.h});
+            this.emitEvent('mount');
         },
         beforeDestroy() {
             document.documentElement.removeEventListener('mousemove', this.handleMove, true);
             document.documentElement.removeEventListener('mousedown', this.handleDown, true);
             document.documentElement.removeEventListener('mouseup', this.handleUp, true);
-            this.$emit('resize:destroy', {left: this.l, top: this.t, width: this.w, height: this.h});
+            this.emitEvent('destroy');
         },
         computed: {
             style() {
@@ -151,6 +151,9 @@
                     el.classList.add('drag-el');
                 });
                 this.dragElements = Array.prototype.slice.call(nodeList);
+            },
+            emitEvent(eventName) {
+                this.$emit(eventName, {eventName, left: this.l, top: this.t, width: this.w, height: this.h});
             },
             handleMove(event) {
                 if (this.resizeState !== 0) {
@@ -201,7 +204,8 @@
                     }
                     this.mouseX = event.clientX;
                     this.mouseY = event.clientY;
-                    this.$emit('resize:move', {left: this.l, top: this.t, width: this.w, height: this.h});
+                    const eventName = !this.dragState ? 'resize:move' : 'drag:move';
+                    this.emitEvent(eventName);
                 }
             },
             handleDown(event) {
@@ -216,7 +220,8 @@
                         this.resizeState = ELEMENT_MASK[elClass].bit;
                         this.parent.height = this.$el.parentElement.clientHeight;
                         this.parent.width = this.$el.parentElement.clientWidth;
-                        this.$emit('resize:start', {left: this.l, top: this.t, width: this.w, height: this.h});
+                        const eventName = !this.dragState ? 'resize:start' : 'drag:start';
+                        this.emitEvent(eventName);
                         break;
                     }
                 }
@@ -224,9 +229,10 @@
             handleUp() {
                 if (this.resizeState !== 0) {
                     this.resizeState = 0;
-                    this.dragState = false;
                     document.body.style.cursor = '';
-                    this.$emit('resize:end', {left: this.l, top: this.t, width: this.w, height: this.h});
+                    const eventName = !this.dragState ? 'resize:end' : 'drag:end';
+                    this.emitEvent(eventName);
+                    this.dragState = false;
                 }
             }
         },

@@ -8,7 +8,10 @@
                          :min-width="minW | checkEmpty" :min-height="minH | checkEmpty"
                          :width="width" :height="height"
                          :left="left" :top="top"
-                         @resize:move="move" @resize:mount="mount" @resize:start="start" @resize:end="end">
+                         @mount="eHandler"
+                         @resize:move="eHandler" @resize:start="eHandler" @resize:end="eHandler"
+                         @drag:move="eHandler" @drag:start="eHandler" @drag:end="eHandler"
+                         >
                 <div class="block">
                     <div class="drag-container-1">drag_1</div>
                     <div class="table-container">
@@ -100,25 +103,12 @@
             };
         },
         methods: {
-            move(data) {
+            eHandler(data) {
                 this.width = data.width;
                 this.height = data.height;
                 this.left = data.left;
                 this.top = data.top;
-                this.event = 'resize:move';
-            },
-            mount(data) {
-                this.width = data.width;
-                this.height = data.height;
-                this.left = data.left;
-                this.top = data.top;
-                this.event = 'resize:mount';
-            },
-            start() {
-                this.event = 'resize:start';
-            },
-            end() {
-                this.event = 'resize:end';
+                this.event = data.eventName;
             }
         },
         filters: {

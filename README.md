@@ -60,17 +60,20 @@ export default {
 | top       | t | [Number, String] | 0   | Offset top from parent          
 | active     |    | Array | ['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt']   | Active handlers for resize    
 | fitParent    |     | Boolean | false  | Respect parent's size on resizing
-| dragSelector |   |  String | undefined | Drag selector
+| dragSelector | dragElements  |  String | undefined | Drag selector
 
 ## Events
 
 | Name            |  Payload   |  Description                                                                                                                                                                                                                                                                           |
 |:--------------------|-------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| resize:mount               |   [left,top,width,height]      | Called after the component is mounted 
-| resize:destroy               |   [left,top,width,height]      | Called before the component is destroyed 
-| resize:start               |   [left,top,width,height]      | Called after clicking on one of the active handlers 
-| resize:move               |   [left,top,width,height]      | Called when a handler is being dragged
-| resize:end               |   [left,top,width,height]      | Called when the mouse button was released
+| mount               |   [eventName,left,top,width,height]      | Called after the component is mounted 
+| destroy               |   [eventName,left,top,width,height]      | Called before the component is destroyed 
+| resize:start               |   [eventName,left,top,width,height]      | Called after clicking on one of the active handlers 
+| resize:move               |   [eventName,left,top,width,height]      | Called when a handler is being dragged
+| resize:end               |   [eventName,left,top,width,height]      | Called when the mouse button was released after resize
+| drag:start | [eventName,left,top,width,height] | Called after clicking on one of the drag elements
+| drag:move |  [eventName,left,top,width,height] | Called when a drag element is being dragged
+| drag:end | [eventName,left,top,width,height] | Called when the mouse button was released after drag
 
 ## Development
 

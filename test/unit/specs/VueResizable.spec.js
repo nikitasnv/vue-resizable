@@ -152,9 +152,9 @@ describe('VueResizable.vue', () => {
         let fromY = rect.bottom;
 
         it(`should generate event on component mounted`, () => {
-            expect(vmWrapper.emitted()['resize:mount']).to.be.ok;
-            expect(vmWrapper.emitted()['resize:mount'].length).to.equal(1);
-            expect(vmWrapper.emitted()['resize:mount'][0][0]).to.deep.equal({height: 200, left: 0, top: 0, width: 200});
+            expect(vmWrapper.emitted()['mount']).to.be.ok;
+            expect(vmWrapper.emitted()['mount'].length).to.equal(1);
+            expect(vmWrapper.emitted()['mount'][0][0]).to.deep.equal({eventName: 'mount', height: 200, left: 0, top: 0, width: 200});
         });
 
         it(`should generate event on mousedown`, () => {
@@ -191,8 +191,8 @@ describe('VueResizable.vue', () => {
 
         it(`should generate event on component destroyed`, () => {
             vmWrapper.destroy();
-            expect(vmWrapper.emitted()['resize:destroy']).to.be.ok;
-            expect(vmWrapper.emitted()['resize:destroy'].length).to.equal(1);
+            expect(vmWrapper.emitted()['destroy']).to.be.ok;
+            expect(vmWrapper.emitted()['destroy'].length).to.equal(1);
         });
     });
 
