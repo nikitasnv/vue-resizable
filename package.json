@@ -7,7 +7,8 @@
   "scripts": {
     "test": "cross-env BABEL_ENV=test karma start test/unit/karma.conf.js --single-run",
     "build": "webpack --progress --config webpack.config.build.js --env.NODE_ENV=production",
-    "dev": "webpack-dev-server --config webpack.config.dev.js --env.NODE_ENV=development"
+    "dev": "webpack-dev-server --config webpack.config.dev.js --env.NODE_ENV=development",
+    "build:doc": "webpack --progress --config webpack.config.dev.js --env.NODE_ENV=production"
   },
   "dependencies": {
     "@babel/core": "^7.0.0",
