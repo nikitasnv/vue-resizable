@@ -1,0 +1,21 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run a multi-line script
+      run: |
+        set -e
+        npm run build:doc
+        cd dist
+        git init
+        git add -A
+        git commit -m 'deploy'
+        git push -f git@github.com:nikitasnv/vue-resizable.git gh-pages
+        cd -
