@@ -6,11 +6,12 @@
 
 ![](./docs/logo.gif) 
 
-> Vue component that allows resizing elements
+> Vue component that allows you to resize and drag elements
 
 ### Demo
 
-[CodeSandbox](https://codesandbox.io/s/13qp7xk787)
+<a href="https://nikitasnv.github.io/vue-resizable/" target="_blank">Demo page</a>\
+<a href="https://codesandbox.io/s/13qp7xk787" target="_blank">CodeSandbox</a>
 
 ## Installation
 

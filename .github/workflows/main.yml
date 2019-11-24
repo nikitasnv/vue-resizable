@@ -10,12 +10,22 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Run a multi-line script
+      env:
+        GITHUB_TOKEN: ${{ secrets.github_token }}
+        GITHUB_REPOSITORY: vue-resizable
+        COMMIT_MSG: |
+          deploy
+          skip-checks: true
       run: |
         set -e
+        npm i
         npm run build:doc
         cd dist
         git init
+        git config user.email "nikitasnv@no-reply.com"
+        git config user.name "nikitasnv"
+        git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
         git add -A
         git commit -m 'deploy'
-        git push -f git@github.com:nikitasnv/vue-resizable.git gh-pages
+        git push -f origin HEAD:gh-pages
         cd -
