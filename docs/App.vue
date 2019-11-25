@@ -13,7 +13,7 @@
                          @drag:move="eHandler" @drag:start="eHandler" @drag:end="eHandler"
                          >
                 <div class="block">
-                    <div class="drag-container-1">drag_1</div>
+                    <div class="drag-container-1"><span>drag_1</span></div>
                     <div class="table-container">
                         <table>
                             <tr>

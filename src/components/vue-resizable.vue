@@ -210,7 +210,7 @@
             },
             handleDown(event) {
                 for (let elClass in ELEMENT_MASK) {
-                    if (this.$el.contains(event.target) && event.target.classList.contains(elClass)) {
+                    if (this.$el.contains(event.target) && (event.target.closest && event.target.closest(`.${elClass}`) || event.target.classList.contains(elClass))) {
                         elClass === 'drag-el' && (this.dragState = true);
                         document.body.style.cursor = ELEMENT_MASK[elClass].cursor;
                         event.preventDefault && event.preventDefault();
