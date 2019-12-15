@@ -12,6 +12,7 @@
 
 <a href="https://nikitasnv.github.io/vue-resizable/" target="_blank">Demo page</a>\
 <a href="https://codesandbox.io/s/13qp7xk787" target="_blank">CodeSandbox</a>
+<a href="https://codepen.io/nikitasnv/pen/YzPXKNw" target="_blank">Material window</a>
 
 ## Installation
 
