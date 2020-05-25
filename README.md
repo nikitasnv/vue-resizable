@@ -52,10 +52,10 @@ export default {
 
 | Property            |  Data attribute    | Type    | Default | Description                                                                                                                                                                                                                                                                           |
 |:--------------------|------|:--------|:--------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| width               |   w   | [Number, String] | 200   | Width           
+| width               |   w   | [Number, String] | undefined   | Width           
 | minWidth            |   minW   | Number  | 0    |  Minimum width     
 | maxWidth            |   maxW    | Number | undefined   | Maximum width
-| height               |  h   | [Number, String]  | 200    | Height                                                                                                                                                                                                                    |
+| height               |  h   | [Number, String]  | undefined    | Height                                                                                                                                                                                                                    |
 | minHeight        | minH | Number  | 0       | Minimum height                                                                                                                                                                                                                |
 | maxHeight    | maxH | Number  | undefined       | Maximum height                                                                                                                                                                                                                              |
 | left          |   l    | [Number, String] | 0    | Offset left from parent                                                                                                                                                                                                                                                     |
@@ -63,6 +63,7 @@ export default {
 | active     |    | Array | ['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt']   | Active handlers for resize    
 | fitParent    |     | Boolean | false  | Respect parent's size on resizing
 | dragSelector | dragElements  |  String | undefined | Drag selector
+| maximize | | Boolean | false| Maximize element to parent size
 
 ## Events
 
@@ -76,6 +77,7 @@ export default {
 | drag:start | [eventName,left,top,width,height] | Called after clicking on one of the drag elements
 | drag:move |  [eventName,left,top,width,height] | Called when a drag element is being dragged
 | drag:end | [eventName,left,top,width,height] | Called when the mouse button was released after drag
+| maximize | [eventName,left,top,width,height, state] | Called when "maximize" state changed
 
 ## Development
 

@@ -3,14 +3,14 @@
         <div class="container">
             <vue-resizable class="resizable" ref="resizableComponent" 
                          :dragSelector="dragSelector"
-                         :active="handlers" :fit-parent="fit"
+                         :active="handlers" :fit-parent="fit" :maximize="maximize"
                          :max-width="maxW | checkEmpty" :max-height="maxH | checkEmpty"
                          :min-width="minW | checkEmpty" :min-height="minH | checkEmpty"
                          :width="width" :height="height"
                          :left="left" :top="top"
                          @mount="eHandler"
                          @resize:move="eHandler" @resize:start="eHandler" @resize:end="eHandler"
-                         @drag:move="eHandler" @drag:start="eHandler" @drag:end="eHandler"
+                         @drag:move="eHandler" @drag:start="eHandler" @drag:end="eHandler" @maximize="eHandler"
                          >
                 <div class="block">
                     <div class="drag-container-1"><span>drag_1</span></div>
@@ -73,6 +73,9 @@
                 <div class="table-cell">
                     fitParent:<input type="checkbox" v-model.number="fit"/>
                 </div>
+                <div class="table-cell">
+                    maximize:<input type="checkbox" v-model.number="maximize"/>
+                </div>
             </div>
             <div class="table-row" style="text-align: left;">
                 <div class="table-cell" style="padding: 0 20px;width: 100%">
@@ -98,7 +101,7 @@
                 height: tH, width: tW,
                 maxW: 250, maxH: 250,
                 minW: 100, minH: 100,
-                fit: true, event: '',
+                fit: true, maximize: false, event: '',
                 dragSelector: ".drag-container-1, .drag-container-2"
             };
         },
@@ -109,6 +112,9 @@
                 this.left = data.left;
                 this.top = data.top;
                 this.event = data.eventName;
+                if(data.eventName === 'maximize') {
+                    this.maximize = data.state;
+                }
             }
         },
         filters: {

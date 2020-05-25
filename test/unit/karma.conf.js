@@ -24,6 +24,6 @@ module.exports = function (config) {
                 {type: 'text-summary'}
             ]
         },
-        browsers: ['Chrome', 'IE'],
+        browsers: ['Chrome'],
     })
 }

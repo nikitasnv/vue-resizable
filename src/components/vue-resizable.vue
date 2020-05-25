@@ -2,7 +2,7 @@
     <div class="resizable-component" :style="style">
         <slot></slot>
         <template v-for="el in active">
-            <div :class="'resizable-'+el" :key="el"></div>
+            <div v-show="!maximize" :class="'resizable-'+el" :key="el"></div>
         </template>
     </div>
 </template>
@@ -23,7 +23,7 @@
     export default {
         props: {
             width: {
-                default: 200,
+                default: undefined,
                 type: [Number, String]
             },
             minWidth: {
@@ -35,7 +35,7 @@
                 type: Number,
             },
             height: {
-                default: 200,
+                default: undefined,
                 type: [Number, String]
             },
             minHeight: {
@@ -66,6 +66,10 @@
             dragSelector: {
                 default: undefined,
                 type: String
+            },
+            maximize: {
+                default: false,
+                type: Boolean
             }
         },
         data() {
@@ -109,18 +113,31 @@
             },
             dragSelector(selector) {
                 this.setupDragElements(selector);
+            },
+            maximize(value) {
+                this.setMaximize(value);
+                this.emitEvent('maximize', {state: value});
             }
         },
         mounted() {
-            typeof this.width !== 'number' && (this.w = this.$el.clientWidth);
-            typeof this.height !== 'number' && (this.h = this.$el.clientHeight);
+            if(!this.width) {
+                this.w = this.$el.parentElement.clientWidth;
+            } else {
+                typeof this.width !== 'number' && (this.w = this.$el.clientWidth);
+            }
+            if(!this.height) {
+                this.h = this.$el.parentElement.clientHeight;
+            } else {
+                typeof this.height !== 'number' && (this.h = this.$el.clientHeight);
+            }
             typeof this.left !== 'number' && (this.l = this.$el.offsetLeft - this.$el.parentElement.offsetLeft);
             typeof this.top !== 'number' && (this.t = this.$el.offsetTop - this.$el.parentElement.offsetTop);
-            this.w < this.minW && (this.w = this.minW);
-            this.h < this.minH && (this.h = this.minH);
-            this.w > this.maxW && (this.w = this.maxW);
-            this.h > this.maxH && (this.h = this.maxH);
+            this.minW && this.w < this.minW && (this.w = this.minW);
+            this.minH && this.h < this.minH && (this.h = this.minH);
+            this.maxW && this.w > this.maxW && (this.w = this.maxW);
+            this.maxH && this.h > this.maxH && (this.h = this.maxH);
 
+            this.setMaximize(this.maximize);
             this.setupDragElements(this.dragSelector);
 
             document.documentElement.addEventListener('mousemove', this.handleMove, true);
@@ -145,6 +162,26 @@
             }
         },
         methods: {
+            setMaximize(value) {
+                const parentEl = this.$el.parentElement;
+                if(value) {
+                    this.prevState = {w: this.w, h: this.h, l: this.l, t: this.t};
+                    this.t = this.l = 0;
+                    this.w = parentEl.clientWidth;
+                    this.h = parentEl.clientHeight;
+                } else {
+                    this.restoreSize();
+                }
+            },
+            restoreSize() {
+                if (this.prevState) {
+                    this.l = this.prevState.l;
+                    this.t = this.prevState.t;
+                    this.h = this.prevState.h;
+                    this.w = this.prevState.w;
+                }
+            },
+
             setupDragElements(selector) {
                 const nodeList = this.$el.querySelectorAll(selector);
                 nodeList.forEach(el => {
@@ -152,11 +189,20 @@
                 });
                 this.dragElements = Array.prototype.slice.call(nodeList);
             },
-            emitEvent(eventName) {
-                this.$emit(eventName, {eventName, left: this.l, top: this.t, width: this.w, height: this.h});
+            emitEvent(eventName, additionalOptions) {
+                this.$emit(eventName, {eventName, left: this.l, top: this.t, width: this.w, height: this.h, ...additionalOptions});
             },
             handleMove(event) {
                 if (this.resizeState !== 0) {
+                    if(this.maximize && this.prevState) {
+                        const parentWidth = this.parent.width;
+                        const parentHeight = this.parent.height;
+                        this.restoreSize();
+                        this.prevState = undefined;
+                        this.t = (event.clientY > parentHeight / 2) ? parentHeight - this.h : 0;
+                        this.l = (event.clientX > parentWidth / 2) ? parentWidth - this.w : 0;
+                        this.emitEvent('maximize', {state: false});
+                    }
                     let diffX = event.clientX - this.mouseX + this.offsetX,
                         diffY = event.clientY - this.mouseY + this.offsetY;
                     this.offsetX = this.offsetY = 0;
