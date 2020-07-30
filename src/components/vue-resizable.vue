@@ -183,6 +183,11 @@
             },
 
             setupDragElements(selector) {
+                const oldList = this.$el.querySelectorAll('.drag-el');
+                oldList.forEach(el => {
+                  el.classList.remove('drag-el')
+                });
+
                 const nodeList = this.$el.querySelectorAll(selector);
                 nodeList.forEach(el => {
                     el.classList.add('drag-el');
@@ -207,19 +212,19 @@
                         diffY = event.clientY - this.mouseY + this.offsetY;
                     this.offsetX = this.offsetY = 0;
                     if (this.resizeState & ELEMENT_MASK['resizable-r'].bit) {
-                        if (!this.dragState && this.w + diffX < this.minW) 
+                        if (!this.dragState && this.w + diffX < this.minW)
                             this.offsetX = (diffX - (diffX = this.minW - this.w));
-                        else if (!this.dragState && this.maxW && this.w + diffX > this.maxW && (!this.fitParent || this.w + this.l < this.parent.width)) 
+                        else if (!this.dragState && this.maxW && this.w + diffX > this.maxW && (!this.fitParent || this.w + this.l < this.parent.width))
                             this.offsetX = (diffX - (diffX = this.maxW - this.w));
                         else if (this.fitParent && this.l + this.w + diffX > this.parent.width)
                             this.offsetX = (diffX - (diffX = this.parent.width - this.l - this.w));
- 
+
                         this.w += this.dragState ? 0 : diffX;
                     }
                     if (this.resizeState & ELEMENT_MASK['resizable-b'].bit) {
-                        if (!this.dragState && this.h + diffY < this.minH) 
+                        if (!this.dragState && this.h + diffY < this.minH)
                             this.offsetY = (diffY - (diffY = this.minH - this.h));
-                        else if (!this.dragState && this.maxH && this.h + diffY > this.maxH && (!this.fitParent || this.h + this.t < this.parent.height)) 
+                        else if (!this.dragState && this.maxH && this.h + diffY > this.maxH && (!this.fitParent || this.h + this.t < this.parent.height))
                             this.offsetY = (diffY - (diffY = this.maxH - this.h));
                         else if (this.fitParent && this.t + this.h + diffY > this.parent.height)
                             this.offsetY = (diffY - (diffY = this.parent.height - this.t - this.h));
@@ -244,7 +249,7 @@
                             this.offsetY = (diffY - (diffY = this.h - this.maxH));
                         else if (this.fitParent && this.t + diffY < 0)
                             this.offsetY = (diffY - (diffY = -this.t));
-                        
+
                         this.t += diffY;
                         this.h -= this.dragState ? 0 : diffY;
                     }
