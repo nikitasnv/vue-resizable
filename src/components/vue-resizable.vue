@@ -20,6 +20,13 @@
         'drag-el': {bit: 0b1111, cursor: 'pointer'}
     };
 
+    const CALC_MASK = {
+        l: 0b0001,
+        t: 0b0010,
+        w: 0b0100,
+        h: 0b1000
+    };
+
     export default {
         props: {
             width: {
@@ -70,6 +77,11 @@
             maximize: {
                 default: false,
                 type: Boolean
+            },
+            disableAttributes: {
+                default: () => [],
+                validator: (val) => ['l', 't', 'w', 'h'].filter(value => val.indexOf(value) !== -1).length === val.length,
+                type: Array
             }
         },
         data() {
@@ -83,7 +95,7 @@
                 parent: {width: 0, height: 0},
                 resizeState: 0,
                 dragElements: [],
-                dragState: false
+                dragState: false, calcMap: 0b1111
             }
         },
         watch: {
@@ -139,6 +151,22 @@
 
             this.setMaximize(this.maximize);
             this.setupDragElements(this.dragSelector);
+
+            this.disableAttributes.forEach(attr => {
+              switch (attr) {
+                case 'l':
+                  this.calcMap &= ~CALC_MASK.l;
+                  break;
+                case 't':
+                  this.calcMap &= ~CALC_MASK.t;
+                  break;
+                case 'w':
+                  this.calcMap &= ~CALC_MASK.w;
+                  break;
+                case 'h':
+                  this.calcMap &= ~CALC_MASK.h;
+              }
+            })
 
             document.documentElement.addEventListener('mousemove', this.handleMove, true);
             document.documentElement.addEventListener('mousedown', this.handleDown, true);
@@ -219,7 +247,7 @@
                         else if (this.fitParent && this.l + this.w + diffX > this.parent.width)
                             this.offsetX = (diffX - (diffX = this.parent.width - this.l - this.w));
 
-                        this.w += this.dragState ? 0 : diffX;
+                      this.calcMap & CALC_MASK.w && (this.w += this.dragState ? 0 : diffX);
                     }
                     if (this.resizeState & ELEMENT_MASK['resizable-b'].bit) {
                         if (!this.dragState && this.h + diffY < this.minH)
@@ -229,29 +257,29 @@
                         else if (this.fitParent && this.t + this.h + diffY > this.parent.height)
                             this.offsetY = (diffY - (diffY = this.parent.height - this.t - this.h));
 
-                        this.h += this.dragState ? 0 : diffY;
+                        this.calcMap & CALC_MASK.h && (this.h += this.dragState ? 0 : diffY);
                     }
                     if (this.resizeState & ELEMENT_MASK['resizable-l'].bit) {
                         if (!this.dragState && this.w - diffX < this.minW)
                             this.offsetX = (diffX - (diffX = this.w - this.minW));
-                        else if (!this.dragState && this.maxW && this.w - diffX > this.maxW && this.l > 0)
+                        else if (!this.dragState && this.maxW && this.w - diffX > this.maxW && this.l >= 0)
                             this.offsetX = (diffX - (diffX = this.w - this.maxW));
                         else if (this.fitParent && this.l + diffX < 0)
                             this.offsetX = (diffX - (diffX = -this.l));
 
-                        this.l += diffX;
-                        this.w -= this.dragState ? 0 : diffX;
+                        this.calcMap & CALC_MASK.l && (this.l += diffX);
+                        this.calcMap & CALC_MASK.w && (this.w -= this.dragState ? 0 : diffX);
                     }
                     if (this.resizeState & ELEMENT_MASK['resizable-t'].bit) {
                         if (!this.dragState && this.h - diffY < this.minH)
                             this.offsetY = (diffY - (diffY = this.h - this.minH));
-                        else if (!this.dragState && this.maxH && this.h - diffY > this.maxH && this.t > 0)
+                        else if (!this.dragState && this.maxH && this.h - diffY > this.maxH && this.t >= 0)
                             this.offsetY = (diffY - (diffY = this.h - this.maxH));
                         else if (this.fitParent && this.t + diffY < 0)
                             this.offsetY = (diffY - (diffY = -this.t));
 
-                        this.t += diffY;
-                        this.h -= this.dragState ? 0 : diffY;
+                        this.calcMap & CALC_MASK.t && (this.t += diffY);
+                        this.calcMap & CALC_MASK.h && (this.h -= this.dragState ? 0 : diffY);
                     }
                     this.mouseX = event.clientX;
                     this.mouseY = event.clientY;
