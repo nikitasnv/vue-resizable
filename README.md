@@ -64,6 +64,7 @@ export default {
 | fitParent    |     | Boolean | false  | Respect parent's size on resizing
 | dragSelector | dragElements  |  String | undefined | Drag selector
 | maximize | | Boolean | false| Maximize element to parent size
+| disableAttributes | calcMap | Array | [] | Disable changes to attributes, Available values: ['l', 't', 'w', 'h']
 
 ## Events
 
