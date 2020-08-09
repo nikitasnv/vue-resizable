@@ -171,12 +171,22 @@
             document.documentElement.addEventListener('mousemove', this.handleMove, true);
             document.documentElement.addEventListener('mousedown', this.handleDown, true);
             document.documentElement.addEventListener('mouseup', this.handleUp, true);
+
+            document.documentElement.addEventListener('touchmove', this.handleMove, true);
+            document.documentElement.addEventListener('touchstart', this.handleDown, true);
+            document.documentElement.addEventListener('touchend', this.handleUp, true);
+
             this.emitEvent('mount');
         },
         beforeDestroy() {
             document.documentElement.removeEventListener('mousemove', this.handleMove, true);
             document.documentElement.removeEventListener('mousedown', this.handleDown, true);
             document.documentElement.removeEventListener('mouseup', this.handleUp, true);
+
+            document.documentElement.removeEventListener('touchmove', this.handleMove, true);
+            document.documentElement.removeEventListener('touchstart', this.handleDown, true);
+            document.documentElement.removeEventListener('touchend', this.handleUp, true);
+
             this.emitEvent('destroy');
         },
         computed: {
@@ -227,17 +237,25 @@
             },
             handleMove(event) {
                 if (this.resizeState !== 0) {
+                    let eventY, eventX;
+                    if(event.touches && event.touches.length >= 0) {
+                        eventY = event.touches[0].clientY;
+                        eventX = event.touches[0].clientX;
+                    } else {
+                        eventY = event.clientY;
+                        eventX = event.clientX;
+                    }
                     if(this.maximize && this.prevState) {
                         const parentWidth = this.parent.width;
                         const parentHeight = this.parent.height;
                         this.restoreSize();
                         this.prevState = undefined;
-                        this.t = (event.clientY > parentHeight / 2) ? parentHeight - this.h : 0;
-                        this.l = (event.clientX > parentWidth / 2) ? parentWidth - this.w : 0;
+                        this.t = (eventY > parentHeight / 2) ? parentHeight - this.h : 0;
+                        this.l = (eventX > parentWidth / 2) ? parentWidth - this.w : 0;
                         this.emitEvent('maximize', {state: false});
                     }
-                    let diffX = event.clientX - this.mouseX + this.offsetX,
-                        diffY = event.clientY - this.mouseY + this.offsetY;
+                    let diffX = eventX - this.mouseX + this.offsetX,
+                        diffY = eventY - this.mouseY + this.offsetY;
                     this.offsetX = this.offsetY = 0;
                     if (this.resizeState & ELEMENT_MASK['resizable-r'].bit) {
                         if (!this.dragState && this.w + diffX < this.minW)
@@ -281,8 +299,8 @@
                         this.calcMap & CALC_MASK.t && (this.t += diffY);
                         this.calcMap & CALC_MASK.h && (this.h -= this.dragState ? 0 : diffY);
                     }
-                    this.mouseX = event.clientX;
-                    this.mouseY = event.clientY;
+                    this.mouseX = eventX;
+                    this.mouseY = eventY;
                     const eventName = !this.dragState ? 'resize:move' : 'drag:move';
                     this.emitEvent(eventName);
                 }
@@ -292,10 +310,15 @@
                     if (this.$el.contains(event.target) && (event.target.closest && event.target.closest(`.${elClass}`) || event.target.classList.contains(elClass))) {
                         elClass === 'drag-el' && (this.dragState = true);
                         document.body.style.cursor = ELEMENT_MASK[elClass].cursor;
-                        event.preventDefault && event.preventDefault();
+                        if(event.touches && event.touches.length >= 1) {
+                          this.mouseX = event.touches[0].clientX;
+                          this.mouseY = event.touches[0].clientY;
+                        } else {
+                          event.preventDefault && event.preventDefault();
+                          this.mouseX = event.clientX;
+                          this.mouseY = event.clientY;
+                        }
                         this.offsetX = this.offsetY = 0;
-                        this.mouseX = event.clientX;
-                        this.mouseY = event.clientY;
                         this.resizeState = ELEMENT_MASK[elClass].bit;
                         this.parent.height = this.$el.parentElement.clientHeight;
                         this.parent.width = this.$el.parentElement.clientWidth;
