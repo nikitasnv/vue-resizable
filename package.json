@@ -1,6 +1,6 @@
 {
   "name": "vue-resizable",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Vue2 component that allows to resize and drag elements",
   "main": "dist/main.js",
   "jsnext:main": "src/index.js",
@@ -10,15 +10,15 @@
     "dev": "webpack-dev-server --config webpack.config.dev.js --env.NODE_ENV=development",
     "build:doc": "webpack --progress --config webpack.config.dev.js --env.NODE_ENV=production"
   },
-  "dependencies": {
-    "@babel/core": "^7.9.6",
-    "@babel/preset-env": "^7.9.6",
-    "cross-env": "^7.0.2",
-    "vue": "^2.6.11",
-    "webpack": "^4.43.0"
+  "peerDependencies": {
+    "vue": "2.x"
   },
   "devDependencies": {
+    "vue": "^2.6.11",
+    "cross-env": "^7.0.2",
     "@vue/test-utils": "^1.0.3",
+    "@babel/core": "^7.9.6",
+    "@babel/preset-env": "^7.9.6",
     "babel-loader": "^8.1.0",
     "babel-plugin-istanbul": "^6.0.0",
     "babel-preset-vue": "^2.0.2",
@@ -38,6 +38,7 @@
     "vue-loader": "^15.9.2",
     "vue-style-loader": "^4.1.2",
     "vue-template-compiler": "^2.6.11",
+    "webpack": "^4.43.0",
     "webpack-bundle-analyzer": "^3.8.0",
     "webpack-cli": "^3.3.11",
     "webpack-dev-server": "^3.11.0"
