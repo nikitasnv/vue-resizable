@@ -192,11 +192,11 @@
         computed: {
             style() {
                 return {
-                    width: typeof this.w === "number" ? this.w + 'px' : this.w,
-                    height: typeof this.h === "number" ? this.h + 'px' : this.h,
-                    left: typeof this.l === "number" ? this.l + 'px' : this.l,
-                    top: typeof this.t === "number" ? this.t + 'px' : this.t
-                }
+                  ...((this.calcMap & CALC_MASK.w) && {width: typeof this.w === "number" ? this.w + 'px' : this.w}),
+                  ...((this.calcMap & CALC_MASK.h) && {height: typeof this.h === "number" ? this.h + 'px' : this.h}),
+                  ...((this.calcMap & CALC_MASK.l) && {left: typeof this.l === "number" ? this.l + 'px' : this.l}),
+                  ...((this.calcMap & CALC_MASK.t) && {top: typeof this.t === "number" ? this.t + 'px' : this.t})
+                };
             }
         },
         methods: {
