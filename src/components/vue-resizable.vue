@@ -256,6 +256,10 @@
                     }
                     let diffX = eventX - this.mouseX + this.offsetX,
                         diffY = eventY - this.mouseY + this.offsetY;
+                    const scaleX = this.$el.getBoundingClientRect().width / this.$el.offsetWidth;
+                    const scaleY = this.$el.getBoundingClientRect().height / this.$el.offsetHeight;
+                    diffX /= scaleX;
+                    diffY /= scaleY;
                     this.offsetX = this.offsetY = 0;
                     if (this.resizeState & ELEMENT_MASK['resizable-r'].bit) {
                         if (!this.dragState && this.w + diffX < this.minW)
