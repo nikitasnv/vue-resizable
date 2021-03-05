@@ -134,12 +134,12 @@
         mounted() {
             if(!this.width) {
                 this.w = this.$el.parentElement.clientWidth;
-            } else {
+            } else if (this.width !== 'auto') {
                 typeof this.width !== 'number' && (this.w = this.$el.clientWidth);
             }
             if(!this.height) {
                 this.h = this.$el.parentElement.clientHeight;
-            } else {
+            } else if (this.height !== 'auto') {
                 typeof this.height !== 'number' && (this.h = this.$el.clientHeight);
             }
             typeof this.left !== 'number' && (this.l = this.$el.offsetLeft - this.$el.parentElement.offsetLeft);
@@ -237,6 +237,15 @@
             },
             handleMove(event) {
                 if (this.resizeState !== 0) {
+                    // If width or height was set to 'auto', on the first time the user resize the window, if width and height were not set, they are now handled by vue-resizable.
+                    if (!this.dragState) {
+                        if (isNaN(this.w)) {
+                            this.w = this.$el.clientWidth;
+                        }
+                        if (isNaN(this.h)) {
+                            this.h = this.$el.clientHeight;
+                        }
+                    }
                     let eventY, eventX;
                     if(event.touches && event.touches.length >= 0) {
                         eventY = event.touches[0].clientY;
