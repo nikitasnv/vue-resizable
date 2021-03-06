@@ -52,10 +52,10 @@ export default {
 
 | Property            |  Data attribute    | Type    | Default | Description                                                                                                                                                                                                                                                                           |
 |:--------------------|------|:--------|:--------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| width               |   w   | [Number, String] | undefined   | Width           
+| width               |   w   | [Number, String] | undefined   | Width in pixel or 'auto'           
 | minWidth            |   minW   | Number  | 0    |  Minimum width     
 | maxWidth            |   maxW    | Number | undefined   | Maximum width
-| height               |  h   | [Number, String]  | undefined    | Height                                                                                                                                                                                                                    |
+| height               |  h   | [Number, String]  | undefined    | Height in pixel, or 'auto'                                                                                                                                                                                                                    |
 | minHeight        | minH | Number  | 0       | Minimum height                                                                                                                                                                                                                |
 | maxHeight    | maxH | Number  | undefined       | Maximum height                                                                                                                                                                                                                              |
 | left          |   l    | [Number, String] | 0    | Offset left from parent                                                                                                                                                                                                                                                     |
