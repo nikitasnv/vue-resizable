@@ -7,7 +7,7 @@
   "scripts": {
     "build": "webpack --progress --config webpack.config.build.js --env NODE_ENV=production",
     "dev": "webpack serve --config webpack.config.dev.js --env NODE_ENV=development",
-    "build:doc": "webpack --progress --config webpack.config.dev.js --env.NODE_ENV=production"
+    "build:doc": "webpack --progress --config webpack.config.dev.js --env NODE_ENV=production"
   },
   "peerDependencies": {
     "vue": "3.x"
