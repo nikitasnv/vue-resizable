@@ -7,10 +7,5 @@
       }
     }],
     "vue"
-  ],
-  "env": {
-    "test": {
-      "plugins": [ "istanbul" ]
-    }
-  }
+  ]
 }

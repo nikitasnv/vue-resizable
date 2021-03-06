@@ -1,1 +1,1 @@
-export {default} from './components/vue-resizable'
+export { default } from './components/vue-resizable'

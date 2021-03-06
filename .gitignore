@@ -3,4 +3,5 @@ dist/
 .idea
 dev/
 package-lock.json
+yarn.lock
 test/unit/coverage
