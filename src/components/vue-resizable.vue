@@ -99,6 +99,17 @@ export default {
       type: Array
     }
   },
+  emits: [
+    'mount',
+    'destroy',
+    'resize:start',
+    'resize:move',
+    'resize:end',
+    'drag:start',
+    'drag:move',
+    'drag:end',
+    'maximize'
+  ],
   data() {
     return {
       w: this.width,
