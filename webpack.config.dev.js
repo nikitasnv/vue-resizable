@@ -1,9 +1,9 @@
 const path = require('path');
-const {VueLoaderPlugin} = require('vue-loader');
+const { VueLoaderPlugin } = require('vue-loader');
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 
 module.exports = {
-    devtool: '#eval-source-map',
+    devtool: 'eval-source-map',
     entry: path.resolve(__dirname, 'docs/index.js'),
     mode: 'development',
     output: {

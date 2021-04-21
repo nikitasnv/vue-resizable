@@ -1,5 +1,5 @@
 const path = require('path');
-const {VueLoaderPlugin} = require('vue-loader');
+const { VueLoaderPlugin } = require('vue-loader');
 
 module.exports = {
     devtool: false,
