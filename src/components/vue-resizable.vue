@@ -304,6 +304,13 @@ export default {
         }
         let diffX = eventX - this.mouseX + this.offsetX,
           diffY = eventY - this.mouseY + this.offsetY;
+        if(this.$el.getBoundingClientRect) {
+          const rect = this.$el.getBoundingClientRect();
+          const scaleX = rect.width / this.$el.offsetWidth;
+          const scaleY = rect.height / this.$el.offsetHeight;
+          diffX /= scaleX;
+          diffY /= scaleY;
+        }
         this.offsetX = this.offsetY = 0;
         if (this.resizeState & ELEMENT_MASK["resizable-r"].bit) {
           if (!this.dragState && this.w + diffX < this.minW)
