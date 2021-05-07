@@ -3,12 +3,6 @@
     ref="parent"
     class="resizable-component"
     :style="style"
-    @mousemove="handleMove"
-    @touchmove="handleMove"
-    @mousedown="handleDown"
-    @touchstart="handleDown"
-    @mouseup="handleUp"
-    @touchend="handleUp"
   >
     <slot />
     <template
@@ -227,9 +221,64 @@ export default {
           this.calcMap &= ~CALC_MASK.h;
       }
     });
+
+    document.documentElement.addEventListener(
+        "mousemove",
+        this.handleMove,
+        true
+    );
+    document.documentElement.addEventListener(
+        "mousedown",
+        this.handleDown,
+        true
+    );
+    document.documentElement.addEventListener("mouseup", this.handleUp, true);
+
+    document.documentElement.addEventListener(
+        "touchmove",
+        this.handleMove,
+        true
+    );
+    document.documentElement.addEventListener(
+        "touchstart",
+        this.handleDown,
+        true
+    );
+    document.documentElement.addEventListener("touchend", this.handleUp, true);
     this.emitEvent("mount");
   },
   beforeUnmount() {
+    document.documentElement.removeEventListener(
+        "mousemove",
+        this.handleMove,
+        true
+    );
+    document.documentElement.removeEventListener(
+        "mousedown",
+        this.handleDown,
+        true
+    );
+    document.documentElement.removeEventListener(
+        "mouseup",
+        this.handleUp,
+        true
+    );
+
+    document.documentElement.removeEventListener(
+        "touchmove",
+        this.handleMove,
+        true
+    );
+    document.documentElement.removeEventListener(
+        "touchstart",
+        this.handleDown,
+        true
+    );
+    document.documentElement.removeEventListener(
+        "touchend",
+        this.handleUp,
+        true
+    );
     this.emitEvent("destroy");
   },
   methods: {
