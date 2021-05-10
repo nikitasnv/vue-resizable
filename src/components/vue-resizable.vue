@@ -5,15 +5,12 @@
     :style="style"
   >
     <slot />
-    <template
+    <div
       v-for="el in active"
+      v-show="!maximize"
       :key="el"
-    >
-      <div
-        v-show="!maximize"
-        :class="'resizable-' + el"
-      />
-    </template>
+      :class="'resizable-' + el"
+    />
   </div>
 </template>
 
