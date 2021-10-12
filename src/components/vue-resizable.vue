@@ -244,40 +244,8 @@ export default {
     document.documentElement.addEventListener("touchend", this.handleUp, true);
     this.emitEvent("mount");
   },
-  beforeUnmount() {
-    document.documentElement.removeEventListener(
-        "mousemove",
-        this.handleMove,
-        true
-    );
-    document.documentElement.removeEventListener(
-        "mousedown",
-        this.handleDown,
-        true
-    );
-    document.documentElement.removeEventListener(
-        "mouseup",
-        this.handleUp,
-        true
-    );
-
-    document.documentElement.removeEventListener(
-        "touchmove",
-        this.handleMove,
-        true
-    );
-    document.documentElement.removeEventListener(
-        "touchstart",
-        this.handleDown,
-        true
-    );
-    document.documentElement.removeEventListener(
-        "touchend",
-        this.handleUp,
-        true
-    );
-    this.emitEvent("destroy");
-  },
+  beforeUnmount: this.onDestroy,
+  beforeDestoy: this.onDestroy,
   methods: {
     setMaximize(value) {
       const parentEl = this.$el.parentElement;
@@ -471,6 +439,40 @@ export default {
         this.emitEvent(eventName);
         this.dragState = false;
       }
+    },
+    onDestroy() {
+      document.documentElement.removeEventListener(
+          "mousemove",
+          this.handleMove,
+          true
+      );
+      document.documentElement.removeEventListener(
+          "mousedown",
+          this.handleDown,
+          true
+      );
+      document.documentElement.removeEventListener(
+          "mouseup",
+          this.handleUp,
+          true
+      );
+
+      document.documentElement.removeEventListener(
+          "touchmove",
+          this.handleMove,
+          true
+      );
+      document.documentElement.removeEventListener(
+          "touchstart",
+          this.handleDown,
+          true
+      );
+      document.documentElement.removeEventListener(
+          "touchend",
+          this.handleUp,
+          true
+      );
+      this.emitEvent("destroy");
     }
   }
 };
