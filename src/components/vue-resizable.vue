@@ -244,8 +244,12 @@ export default {
     document.documentElement.addEventListener("touchend", this.handleUp, true);
     this.emitEvent("mount");
   },
-  beforeUnmount: this.onDestroy,
-  beforeDestoy: this.onDestroy,
+  beforeUnmount() {
+    this.onDestroy()
+  },
+  beforeDestroy() {
+    this.onDestroy()
+  },
   methods: {
     setMaximize(value) {
       const parentEl = this.$el.parentElement;
