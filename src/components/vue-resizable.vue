@@ -245,38 +245,10 @@ export default {
     this.emitEvent("mount");
   },
   beforeUnmount() {
-    document.documentElement.removeEventListener(
-        "mousemove",
-        this.handleMove,
-        true
-    );
-    document.documentElement.removeEventListener(
-        "mousedown",
-        this.handleDown,
-        true
-    );
-    document.documentElement.removeEventListener(
-        "mouseup",
-        this.handleUp,
-        true
-    );
-
-    document.documentElement.removeEventListener(
-        "touchmove",
-        this.handleMove,
-        true
-    );
-    document.documentElement.removeEventListener(
-        "touchstart",
-        this.handleDown,
-        true
-    );
-    document.documentElement.removeEventListener(
-        "touchend",
-        this.handleUp,
-        true
-    );
-    this.emitEvent("destroy");
+    this.onDestroy()
+  },
+  beforeDestroy() {
+    this.onDestroy()
   },
   methods: {
     setMaximize(value) {
@@ -471,6 +443,40 @@ export default {
         this.emitEvent(eventName);
         this.dragState = false;
       }
+    },
+    onDestroy() {
+      document.documentElement.removeEventListener(
+          "mousemove",
+          this.handleMove,
+          true
+      );
+      document.documentElement.removeEventListener(
+          "mousedown",
+          this.handleDown,
+          true
+      );
+      document.documentElement.removeEventListener(
+          "mouseup",
+          this.handleUp,
+          true
+      );
+
+      document.documentElement.removeEventListener(
+          "touchmove",
+          this.handleMove,
+          true
+      );
+      document.documentElement.removeEventListener(
+          "touchstart",
+          this.handleDown,
+          true
+      );
+      document.documentElement.removeEventListener(
+          "touchend",
+          this.handleUp,
+          true
+      );
+      this.emitEvent("destroy");
     }
   }
 };
