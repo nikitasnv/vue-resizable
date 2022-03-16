@@ -1,9 +1,5 @@
 <template>
-  <div
-    ref="parent"
-    class="resizable-component"
-    :style="style"
-  >
+  <div ref="parent" class="resizable-component" :style="style">
     <slot />
     <div
       v-for="el in active"
@@ -24,14 +20,14 @@ const ELEMENT_MASK = {
   "resizable-lt": { bit: 0b1100, cursor: "nw-resize" },
   "resizable-t": { bit: 0b1000, cursor: "n-resize" },
   "resizable-rt": { bit: 0b1001, cursor: "ne-resize" },
-  "drag-el": { bit: 0b1111, cursor: "pointer" }
+  "drag-el": { bit: 0b1111, cursor: "pointer" },
 };
 
 const CALC_MASK = {
   l: 0b0001,
   t: 0b0010,
   w: 0b0100,
-  h: 0b1000
+  h: 0b1000,
 };
 
 export default {
@@ -39,74 +35,74 @@ export default {
   props: {
     width: {
       default: undefined,
-      type: [Number, String]
+      type: [Number, String],
     },
     minWidth: {
       default: 0,
-      type: Number
+      type: Number,
     },
     maxWidth: {
       default: undefined,
-      type: Number
+      type: Number,
     },
     height: {
       default: undefined,
-      type: [Number, String]
+      type: [Number, String],
     },
     minHeight: {
       default: 0,
-      type: Number
+      type: Number,
     },
     maxHeight: {
       default: undefined,
-      type: Number
+      type: Number,
     },
     left: {
       default: 0,
-      type: [Number, String]
+      type: [Number, String],
     },
     top: {
       default: 0,
-      type: [Number, String]
+      type: [Number, String],
     },
     active: {
       default: () => ["r", "rb", "b", "lb", "l", "lt", "t", "rt"],
-      validator: val =>
+      validator: (val) =>
         ["r", "rb", "b", "lb", "l", "lt", "t", "rt"].filter(
-          value => val.indexOf(value) !== -1
+          (value) => val.indexOf(value) !== -1
         ).length === val.length,
-      type: Array
+      type: Array,
     },
     fitParent: {
       default: false,
-      type: Boolean
+      type: Boolean,
     },
     dragSelector: {
       default: undefined,
-      type: String
+      type: String,
     },
     maximize: {
       default: false,
-      type: Boolean
+      type: Boolean,
     },
     disableAttributes: {
       default: () => [],
-      validator: val =>
-        ["l", "t", "w", "h"].filter(value => val.indexOf(value) !== -1)
+      validator: (val) =>
+        ["l", "t", "w", "h"].filter((value) => val.indexOf(value) !== -1)
           .length === val.length,
-      type: Array
-    }
+      type: Array,
+    },
   },
   emits: [
-    'mount',
-    'destroy',
-    'resize:start',
-    'resize:move',
-    'resize:end',
-    'drag:start',
-    'drag:move',
-    'drag:end',
-    'maximize'
+    "mount",
+    "destroy",
+    "resize:start",
+    "resize:move",
+    "resize:end",
+    "drag:start",
+    "drag:move",
+    "drag:end",
+    "maximize",
   ],
   data() {
     return {
@@ -126,26 +122,26 @@ export default {
       resizeState: 0,
       dragElements: [],
       dragState: false,
-      calcMap: 0b1111
+      calcMap: 0b1111,
     };
   },
   computed: {
     style() {
       return {
         ...(this.calcMap & CALC_MASK.w && {
-          width: typeof this.w === "number" ? this.w + "px" : this.w
+          width: typeof this.w === "number" ? this.w + "px" : this.w,
         }),
         ...(this.calcMap & CALC_MASK.h && {
-          height: typeof this.h === "number" ? this.h + "px" : this.h
+          height: typeof this.h === "number" ? this.h + "px" : this.h,
         }),
         ...(this.calcMap & CALC_MASK.l && {
-          left: typeof this.l === "number" ? this.l + "px" : this.l
+          left: typeof this.l === "number" ? this.l + "px" : this.l,
         }),
         ...(this.calcMap & CALC_MASK.t && {
-          top: typeof this.t === "number" ? this.t + "px" : this.t
-        })
+          top: typeof this.t === "number" ? this.t + "px" : this.t,
+        }),
       };
-    }
+    },
   },
   watch: {
     maxWidth(value) {
@@ -178,17 +174,17 @@ export default {
     maximize(value) {
       this.setMaximize(value);
       this.emitEvent("maximize", { state: value });
-    }
+    },
   },
   mounted() {
     if (!this.width) {
       this.w = this.$el.parentElement.clientWidth;
-    } else if (this.width !== 'auto') {
+    } else if (this.width !== "auto") {
       typeof this.width !== "number" && (this.w = this.$el.clientWidth);
     }
     if (!this.height) {
       this.h = this.$el.parentElement.clientHeight;
-    } else if (this.height !== 'auto') {
+    } else if (this.height !== "auto") {
       typeof this.height !== "number" && (this.h = this.$el.clientHeight);
     }
     typeof this.left !== "number" &&
@@ -203,7 +199,7 @@ export default {
     this.setMaximize(this.maximize);
     this.setupDragElements(this.dragSelector);
 
-    this.disableAttributes.forEach(attr => {
+    this.disableAttributes.forEach((attr) => {
       switch (attr) {
         case "l":
           this.calcMap &= ~CALC_MASK.l;
@@ -220,61 +216,61 @@ export default {
     });
 
     document.documentElement.addEventListener(
-        "mousemove",
-        this.handleMove,
-        true
+      "mousemove",
+      this.handleMove,
+      true
     );
     document.documentElement.addEventListener(
-        "mousedown",
-        this.handleDown,
-        true
+      "mousedown",
+      this.handleDown,
+      true
     );
     document.documentElement.addEventListener("mouseup", this.handleUp, true);
 
     document.documentElement.addEventListener(
-        "touchmove",
-        this.handleMove,
-        true
+      "touchmove",
+      this.handleMove,
+      true
     );
     document.documentElement.addEventListener(
-        "touchstart",
-        this.handleDown,
-        true
+      "touchstart",
+      this.handleDown,
+      true
     );
     document.documentElement.addEventListener("touchend", this.handleUp, true);
     this.emitEvent("mount");
   },
   beforeUnmount() {
     document.documentElement.removeEventListener(
-        "mousemove",
-        this.handleMove,
-        true
+      "mousemove",
+      this.handleMove,
+      true
     );
     document.documentElement.removeEventListener(
-        "mousedown",
-        this.handleDown,
-        true
+      "mousedown",
+      this.handleDown,
+      true
     );
     document.documentElement.removeEventListener(
-        "mouseup",
-        this.handleUp,
-        true
+      "mouseup",
+      this.handleUp,
+      true
     );
 
     document.documentElement.removeEventListener(
-        "touchmove",
-        this.handleMove,
-        true
+      "touchmove",
+      this.handleMove,
+      true
     );
     document.documentElement.removeEventListener(
-        "touchstart",
-        this.handleDown,
-        true
+      "touchstart",
+      this.handleDown,
+      true
     );
     document.documentElement.removeEventListener(
-        "touchend",
-        this.handleUp,
-        true
+      "touchend",
+      this.handleUp,
+      true
     );
     this.emitEvent("destroy");
   },
@@ -301,12 +297,12 @@ export default {
 
     setupDragElements(selector) {
       const oldList = this.$el.querySelectorAll(".drag-el");
-      oldList.forEach(el => {
+      oldList.forEach((el) => {
         el.classList.remove("drag-el");
       });
 
       const nodeList = this.$el.querySelectorAll(selector);
-      nodeList.forEach(el => {
+      nodeList.forEach((el) => {
         el.classList.add("drag-el");
       });
       this.dragElements = Array.prototype.slice.call(nodeList);
@@ -318,7 +314,7 @@ export default {
         top: this.t,
         width: this.w,
         height: this.h,
-        ...additionalOptions
+        ...additionalOptions,
       });
     },
     handleMove(event) {
@@ -350,10 +346,10 @@ export default {
         }
         let diffX = eventX - this.mouseX + this.offsetX,
           diffY = eventY - this.mouseY + this.offsetY;
-        if(this.$el.getBoundingClientRect) {
+        if (this.$el.getBoundingClientRect) {
           const rect = this.$el.getBoundingClientRect();
-          const scaleX = rect.width / this.$el.offsetWidth;
-          const scaleY = rect.height / this.$el.offsetHeight;
+          const scaleX = rect.width / this.$el.offsetWidth || 1;
+          const scaleY = rect.height / this.$el.offsetHeight || 1;
           diffX /= scaleX;
           diffY /= scaleY;
         }
@@ -435,8 +431,11 @@ export default {
       }
     },
     handleDown(event) {
-      if (event.target.closest && event.target.closest('.resizable-component') !== this.$refs['parent'])
-        return
+      if (
+        event.target.closest &&
+        event.target.closest(".resizable-component") !== this.$refs["parent"]
+      )
+        return;
       for (let elClass in ELEMENT_MASK) {
         if (
           this.$el.contains(event.target) &&
@@ -471,8 +470,8 @@ export default {
         this.emitEvent(eventName);
         this.dragState = false;
       }
-    }
-  }
+    },
+  },
 };
 </script>
 

@@ -3,3 +3,4 @@ dev/
 .idea
 .git
 test/unit/coverage
+dist/demo.html

@@ -1,16 +1,29 @@
 <template>
   <div>
     <div class="container">
-      <vue-resizable class="resizable" ref="resizableComponent"
-                     :dragSelector="dragSelector"
-                     :active="handlers" :fit-parent="fit" :maximize="maximize"
-                     :max-width="checkEmpty(maxW)" :max-height="checkEmpty(maxH)"
-                     :min-width="checkEmpty(minW)" :min-height="checkEmpty(minH)"
-                     :width="width" :height="height"
-                     :left="left" :top="top"
-                     @mount="eHandler"
-                     @resize:move="eHandler" @resize:start="eHandler" @resize:end="eHandler"
-                     @drag:move="eHandler" @drag:start="eHandler" @drag:end="eHandler" @maximize="eHandler"
+      <vue-resizable
+        class="resizable"
+        ref="resizableComponent"
+        :dragSelector="dragSelector"
+        :active="handlers"
+        :fit-parent="fit"
+        :maximize="maximize"
+        :max-width="checkEmpty(maxW)"
+        :max-height="checkEmpty(maxH)"
+        :min-width="checkEmpty(minW)"
+        :min-height="checkEmpty(minH)"
+        :width="width"
+        :height="height"
+        :left="left"
+        :top="top"
+        @mount="eHandler"
+        @resize:move="eHandler"
+        @resize:start="eHandler"
+        @resize:end="eHandler"
+        @drag:move="eHandler"
+        @drag:start="eHandler"
+        @drag:end="eHandler"
+        @maximize="eHandler"
       >
         <div class="block">
           <div class="drag-container-1"><span>drag_1</span></div>
@@ -33,52 +46,83 @@
     <div class="container table-block">
       <div class="table-row">
         <div><h4>handlers:</h4></div>
-        <span v-for="handler in ['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt']" :key="handler">
-                    {{ handler }}:<input type="checkbox" v-model="handlers" :value="handler"/>
-               </span>
+        <span
+          v-for="handler in ['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt']"
+          :key="handler"
+        >
+          {{ handler }}:<input
+            type="checkbox"
+            v-model="handlers"
+            :value="handler"
+          />
+        </span>
       </div>
       <div class="table-row">
         <div class="table-cell">
-          minWidth:<input class="table-input" type="number" v-model.number="minW"/>
+          minWidth:<input
+            class="table-input"
+            type="number"
+            v-model.number="minW"
+          />
         </div>
         <div class="table-cell">
-          maxWidth:<input class="table-input" type="number" v-model.number="maxW"/>
-        </div>
-      </div>
-      <div class="table-row">
-        <div class="table-cell">
-          minHeight:<input class="table-input" type="number" v-model.number="minH"/>
-        </div>
-        <div class="table-cell">
-          maxHeight:<input class="table-input" type="number" v-model.number="maxH"/>
-        </div>
-      </div>
-      <div class="table-row">
-        <div class="table-cell">
-          width:<input class="table-input" type="number" v-model.number="width"/>
-        </div>
-        <div class="table-cell">
-          height:<input class="table-input" type="number" v-model.number="height"/>
-        </div>
-      </div>
-      <div class="table-row">
-        <div class="table-cell">
-          left:<input class="table-input" type="number" v-model.number="left"/>
-        </div>
-        <div class="table-cell">
-          top:<input class="table-input" type="number" v-model.number="top"/>
+          maxWidth:<input
+            class="table-input"
+            type="number"
+            v-model.number="maxW"
+          />
         </div>
       </div>
       <div class="table-row">
         <div class="table-cell">
-          fitParent:<input type="checkbox" v-model.number="fit"/>
+          minHeight:<input
+            class="table-input"
+            type="number"
+            v-model.number="minH"
+          />
         </div>
         <div class="table-cell">
-          maximize:<input type="checkbox" v-model.number="maximize"/>
+          maxHeight:<input
+            class="table-input"
+            type="number"
+            v-model.number="maxH"
+          />
         </div>
       </div>
-      <div class="table-row" style="text-align: left;">
-        <div class="table-cell" style="padding: 0 20px;width: 100%">
+      <div class="table-row">
+        <div class="table-cell">
+          width:<input
+            class="table-input"
+            type="number"
+            v-model.number="width"
+          />
+        </div>
+        <div class="table-cell">
+          height:<input
+            class="table-input"
+            type="number"
+            v-model.number="height"
+          />
+        </div>
+      </div>
+      <div class="table-row">
+        <div class="table-cell">
+          left:<input class="table-input" type="number" v-model.number="left" />
+        </div>
+        <div class="table-cell">
+          top:<input class="table-input" type="number" v-model.number="top" />
+        </div>
+      </div>
+      <div class="table-row">
+        <div class="table-cell">
+          fitParent:<input type="checkbox" v-model.number="fit" />
+        </div>
+        <div class="table-cell">
+          maximize:<input type="checkbox" v-model.number="maximize" />
+        </div>
+      </div>
+      <div class="table-row" style="text-align: left">
+        <div class="table-cell" style="padding: 0 20px; width: 100%">
           lastEvent: {{ event }}
         </div>
       </div>
@@ -87,7 +131,7 @@
 </template>
 
 <script>
-import VueResizable from '../src/components/vue-resizable'
+import VueResizable from "../src/components/vue-resizable";
 
 export default {
   name: "App",
@@ -96,13 +140,19 @@ export default {
     const tW = 150;
     const tH = 150;
     return {
-      handlers: ['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt'],
-      left: `calc( 50% - ${tW / 2}px)`, top: `calc(50% - ${tH / 2}px)`,
-      height: tH, width: tW,
-      maxW: 250, maxH: 250,
-      minW: 100, minH: 100,
-      fit: true, maximize: false, event: '',
-      dragSelector: ".drag-container-1, .drag-container-2"
+      handlers: ["r", "rb", "b", "lb", "l", "lt", "t", "rt"],
+      left: `calc( 50% - ${tW / 2}px)`,
+      top: `calc(50% - ${tH / 2}px)`,
+      height: tH,
+      width: tW,
+      maxW: 250,
+      maxH: 250,
+      minW: 100,
+      minH: 100,
+      fit: true,
+      maximize: false,
+      event: "",
+      dragSelector: ".drag-container-1, .drag-container-2",
     };
   },
   methods: {
@@ -112,20 +162,20 @@ export default {
       this.left = data.left;
       this.top = data.top;
       this.event = data.eventName;
-      if (data.eventName === 'maximize') {
+      if (data.eventName === "maximize") {
         this.maximize = data.state;
       }
     },
     checkEmpty(value) {
       return typeof value !== "number" ? 0 : value;
-    }
+    },
   },
   filters: {
     checkEmpty(value) {
       return typeof value !== "number" ? 0 : value;
-    }
-  }
-}
+    },
+  },
+};
 </script>
 
 <style scoped>
@@ -140,7 +190,8 @@ export default {
 }
 </style>
 <style>
-body, html {
+body,
+html {
   height: 100%;
   width: 100%;
   margin: 0;
@@ -154,7 +205,7 @@ body, html {
   display: inline-block;
   border: 1px solid #dddddd;
   background: #ffffff;
-  color: #333333;;
+  color: #333333;
   float: left;
   margin: 10px;
 }
@@ -190,14 +241,15 @@ body, html {
 
 .table-cell {
   width: 50%;
-  display: inline-block
+  display: inline-block;
 }
 
 .table-input {
-  width: 50px
+  width: 50px;
 }
 
-.drag-container-1, .drag-container-2 {
+.drag-container-1,
+.drag-container-2 {
   width: 100%;
   height: 20px;
   background: red;
@@ -214,5 +266,4 @@ body, html {
   justify-content: center;
   align-items: center;
 }
-
 </style>

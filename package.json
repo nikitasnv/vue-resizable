@@ -1,34 +1,29 @@
 {
   "name": "vue-resizable",
-  "version": "2.0.5",
+  "version": "2.1.2",
   "description": "Vue2 component that allows to resize and drag elements",
-  "main": "dist/main.js",
-  "jsnext:main": "src/index.js",
+  "main": "./dist/vue-resizable.common.js",
+  "files": [
+    "dist/*"
+  ],
   "scripts": {
-    "build": "webpack --progress --config webpack.config.build.js --env NODE_ENV=production",
-    "dev": "webpack serve --config webpack.config.dev.js --env NODE_ENV=development",
-    "build:doc": "webpack --progress --config webpack.config.dev.js --env NODE_ENV=production"
-  },
-  "peerDependencies": {
-    "vue": "3.x"
+    "dev": "vue-cli-service serve ./docs/index.js",
+    "build": "vue-cli-service build --target lib --name vue-resizable ./src/main.js",
+    "lint": "vue-cli-service lint"
   },
   "devDependencies": {
-    "@babel/core": "^7.13.8",
-    "@babel/preset-env": "^7.13.9",
-    "@vue/compiler-sfc": "^3.0.7",
-    "babel-loader": "^8.1.0",
-    "babel-preset-vue": "^2.0.2",
-    "css-loader": "^5.1.1",
-    "html-webpack-plugin": "^5.2.0",
-    "vue": "^3.0.2",
-    "vue-loader": "^16.1.2",
-    "vue-style-loader": "^4.1.3",
-    "webpack": "^5.24.3",
-    "webpack-cli": "^4.5.0",
-    "webpack-dev-server": "^3.11.2",
-    "babel-eslint": "^10.1.0",
-    "eslint": "^7.21.0",
-    "eslint-plugin-vue": "^7.7.0"
+    "core-js": "^3.8.3",
+    "vue": "^3.2.13",
+    "@babel/core": "^7.12.16",
+    "@babel/eslint-parser": "^7.12.16",
+    "@vue/cli-plugin-babel": "~5.0.0",
+    "@vue/cli-plugin-eslint": "~5.0.0",
+    "@vue/cli-service": "~5.0.0",
+    "eslint": "^7.32.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "eslint-plugin-vue": "^8.0.3",
+    "prettier": "^2.4.1"
   },
   "author": "NikSnV",
   "license": "MIT",
