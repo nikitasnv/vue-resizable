@@ -4,4 +4,5 @@ module.exports = defineConfig({
   css: {
     extract: false,
   },
+  publicPath: process.env.NODE_ENV === "production" ? "/vue-resizable/" : "/",
 });
