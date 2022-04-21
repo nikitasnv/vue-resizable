@@ -1,6 +1,6 @@
 {
   "name": "vue-resizable",
-  "version": "2.1.4",
+  "version": "2.1.5",
   "description": "Vue2 component that allows to resize and drag elements",
   "main": "./dist/vue-resizable.umd.min.js",
   "files": [
