@@ -314,6 +314,7 @@ export default {
         top: this.t,
         width: this.w,
         height: this.h,
+        cmp: this,
         ...additionalOptions,
       });
     },
