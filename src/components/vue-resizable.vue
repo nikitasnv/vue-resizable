@@ -94,6 +94,10 @@ export default {
       default: false,
       type: Boolean,
     },
+    lockAspectRatio: {
+      default: false,
+      type: Boolean,
+    },
     dragSelector: {
       default: undefined,
       type: String,
@@ -445,6 +449,7 @@ export default {
         scaleX: rect.width / this.$el.offsetWidth || 1,
         scaleY: rect.height / this.$el.offsetHeight || 1,
         rectangle,
+        lockAspectRatio: this.lockAspectRatio,
         boxSize: this.measureBoxSize(),
         parentWidth: this.$el.parentElement.clientWidth,
         parentHeight: this.$el.parentElement.clientHeight,
@@ -503,6 +508,7 @@ export default {
         parentSize,
         fitParent: this.fitParent,
         disabledAttributes: this.disableAttributes,
+        lockAspectRatio: interaction.lockAspectRatio,
         boxSize: interaction.boxSize,
       });
       if (this.calcMap & CALC_MASK.l) this.l = rectangle.l;

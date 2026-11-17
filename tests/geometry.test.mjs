@@ -232,3 +232,158 @@ test("start edges stay anchored while accounting for the outer box", () => {
     { l: 156, t: 176, w: 100, h: 100 }
   );
 });
+
+const lockedOptions = {
+  start: { l: 100, t: 100, w: 200, h: 100 },
+  parentSize: { width: 1000, height: 1000 },
+  lockAspectRatio: true,
+};
+for (const [handle, horizontal, vertical, x, y, l, t] of [
+  ["r", "end", undefined, 100, 0, 100, 100],
+  ["rb", "end", "end", 100, 50, 100, 100],
+  ["b", undefined, "end", 0, 50, 100, 100],
+  ["lb", "start", "end", -100, 50, 0, 100],
+  ["l", "start", undefined, -100, 0, 0, 100],
+  ["lt", "start", "start", -100, -50, 0, 50],
+  ["t", undefined, "start", 0, -50, 100, 50],
+  ["rt", "end", "start", 100, -50, 100, 50],
+]) {
+  test(`aspect lock preserves ratio and anchor for ${handle}`, () => {
+    assert.deepEqual(
+      calculateRectangle({
+        ...lockedOptions,
+        direction: { horizontal, vertical },
+        delta: { x, y },
+      }),
+      { l, t, w: 300, h: 150 }
+    );
+  });
+}
+
+test("locked corners project pointer movement onto the original diagonal", () => {
+  const options = {
+    ...lockedOptions,
+    direction: { horizontal: "end", vertical: "end" },
+  };
+  assert.deepEqual(
+    calculateRectangle({ ...options, delta: { x: 100, y: 0 } }),
+    { l: 100, t: 100, w: 280, h: 140 }
+  );
+  assert.deepEqual(
+    calculateRectangle({ ...options, delta: { x: 100, y: -200 } }),
+    lockedOptions.start
+  );
+});
+
+test("aspect lock combines limits from both axes without distorting the ratio", () => {
+  for (const [limits, delta, w, h] of [
+    [{ minWidth: 240, minHeight: 150 }, -100, 300, 150],
+    [{ maxWidth: 260, maxHeight: 500 }, 1000, 260, 130],
+    [{ maxWidth: 500, maxHeight: 120 }, 1000, 240, 120],
+    [{ minWidth: 400, maxHeight: 120 }, 1000, 240, 120],
+    [{ maxWidth: 0, maxHeight: 0 }, 100, 300, 150],
+  ]) {
+    const result = calculateRectangle({
+      ...lockedOptions,
+      direction: { horizontal: "end" },
+      delta: { x: delta, y: 0 },
+      limits,
+    });
+    assert.deepEqual(result, { l: 100, t: 100, w, h });
+  }
+});
+
+test("aspect lock fits the parent on the secondary axis and overrides impossible minimums", () => {
+  const result = calculateRectangle({
+    ...lockedOptions,
+    direction: { horizontal: "end" },
+    delta: { x: 1000, y: 0 },
+    fitParent: true,
+    parentSize: { width: 1000, height: 220 },
+    limits: { minWidth: 400, minHeight: 300 },
+  });
+  assert.deepEqual(result, { l: 100, t: 100, w: 240, h: 120 });
+});
+
+test("aspect lock accounts for padding and borders at both ends", () => {
+  const options = {
+    ...lockedOptions,
+    fitParent: true,
+    boxSize: { width: 30, height: 40 },
+    parentSize: { width: 1000, height: 260 },
+  };
+  assert.deepEqual(
+    calculateRectangle({
+      ...options,
+      direction: { horizontal: "end" },
+      delta: { x: 1000, y: 0 },
+    }),
+    { l: 100, t: 100, w: 240, h: 120 }
+  );
+  assert.deepEqual(
+    calculateRectangle({
+      ...options,
+      direction: { horizontal: "start", vertical: "start" },
+      delta: { x: -1000, y: -500 },
+    }),
+    { l: 0, t: 50, w: 300, h: 150 }
+  );
+});
+
+test("aspect lock respects disabled sizes and positions", () => {
+  for (const attribute of ["w", "h"]) {
+    assert.deepEqual(
+      calculateRectangle({
+        ...lockedOptions,
+        disabledAttributes: [attribute],
+        direction: { horizontal: "start" },
+        delta: { x: -100, y: 0 },
+      }),
+      lockedOptions.start
+    );
+  }
+  assert.deepEqual(
+    calculateRectangle({
+      ...lockedOptions,
+      disabledAttributes: ["l", "t"],
+      direction: { horizontal: "start", vertical: "start" },
+      delta: { x: -100, y: -50 },
+    }),
+    { l: 100, t: 100, w: 300, h: 150 }
+  );
+});
+
+test("aspect lock ignores dragging and falls back for zero dimensions", () => {
+  const options = { ...lockedOptions, dragging: true, delta: { x: 20, y: 30 } };
+  assert.deepEqual(
+    calculateRectangle(options),
+    calculateRectangle({ ...options, lockAspectRatio: false })
+  );
+  for (const start of [
+    { l: 0, t: 0, w: 0, h: 100 },
+    { l: 0, t: 0, w: 100, h: 0 },
+  ]) {
+    const options = {
+      ...lockedOptions,
+      start,
+      direction: { horizontal: "end", vertical: "end" },
+      delta: { x: 50, y: 50 },
+    };
+    assert.deepEqual(
+      calculateRectangle(options),
+      calculateRectangle({ ...options, lockAspectRatio: false })
+    );
+  }
+});
+
+test("locked shrinking stops at zero and does not mutate frozen inputs", () => {
+  const result = calculateRectangle(
+    Object.freeze({
+      ...lockedOptions,
+      start: Object.freeze({ ...lockedOptions.start }),
+      direction: Object.freeze({ horizontal: "start", vertical: "start" }),
+      delta: Object.freeze({ x: 1000, y: 500 }),
+    })
+  );
+  assert.deepEqual(result, { l: 300, t: 200, w: 0, h: 0 });
+});

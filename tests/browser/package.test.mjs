@@ -735,3 +735,80 @@ for (const mode of ["resize", "drag"]) {
     ]);
   });
 }
+
+for (const boxSizing of ["content-box", "border-box"]) {
+  test(`aspect lock respects the secondary parent boundary with ${boxSizing}`, async () => {
+    await page.evaluate(async (boxSizing) => {
+      await window.fixture.setParentWidth(700);
+      await window.fixture.setBoxStyle({
+        boxSizing,
+        padding: "10px",
+        border: "2px solid black",
+      });
+      await window.fixture.setProps({
+        width: 200,
+        height: 100,
+        minWidth: 0,
+        top: 200,
+        lockAspectRatio: true,
+      });
+    }, boxSizing);
+    const handle = await page.locator(".resizable-r").boundingBox();
+    await page.mouse.move(
+      handle.x + handle.width / 2,
+      handle.y + handle.height / 2
+    );
+    await page.mouse.down();
+    await page.mouse.move(1200, handle.y + handle.height / 2);
+    await page.mouse.up();
+    const geometry = await page
+      .locator(".resizable-component")
+      .evaluate((el) => {
+        const style = getComputedStyle(el);
+        return {
+          width: parseFloat(style.width),
+          height: parseFloat(style.height),
+          bottom: el.offsetTop + el.offsetHeight,
+        };
+      });
+    assert.equal(geometry.width / geometry.height, 2);
+    assert.equal(geometry.bottom, 400);
+    assert.deepEqual(await page.evaluate(() => window.fixture.events), [
+      "resize:start",
+      "resize:end",
+    ]);
+  });
+}
+
+test("aspect lock measures auto sizes and keeps the opposite corner fixed", async () => {
+  await page.evaluate(async () => {
+    await window.fixture.setBoxStyle({ display: "inline-block" });
+    await window.fixture.setContentStyle({ width: "200px", height: "100px" });
+    await window.fixture.setProps({
+      width: "auto",
+      height: "auto",
+      minWidth: 0,
+      left: 100,
+      top: 100,
+      lockAspectRatio: true,
+    });
+  });
+  const handle = await page.locator(".resizable-lt").boundingBox();
+  const x = handle.x + handle.width / 2,
+    y = handle.y + handle.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x - 100, y - 50);
+  await page.mouse.up();
+  assert.deepEqual(await page.evaluate(() => window.fixture.state()), {
+    width: 300,
+    left: 0,
+    top: 50,
+  });
+  assert.equal(
+    await page
+      .locator(".resizable-component")
+      .evaluate((el) => el.offsetHeight),
+    150
+  );
+});
