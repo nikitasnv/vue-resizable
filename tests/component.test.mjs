@@ -579,12 +579,19 @@ test("batched CSS geometry is resolved before the external-update end event", as
 });
 
 test("unmount suppresses a deferred external-update end event", async () => {
-  const w = create();
+  const ends = [];
+  let destroys = 0;
+  const w = create({
+    "onResize:end": (event) => ends.push(event),
+    onDestroy: () => destroys++,
+  });
   down(w);
   await w.setProps({ width: 200, height: 150 });
+  assert.equal(w.vm.interaction, null);
+  assert.equal(ends.length, 0);
   w.unmount();
   await nextTick();
   await nextTick();
-  assert.equal(w.emitted("resize:end"), undefined);
-  assert.equal(w.emitted("destroy").length, 1);
+  assert.equal(ends.length, 0);
+  assert.equal(destroys, 1);
 });
