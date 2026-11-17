@@ -1,26 +1,43 @@
 <template>
-  <div ref="parent" class="resizable-component" :style="style">
+  <div
+    ref="parent"
+    class="resizable-component"
+    :style="style"
+    @pointerdown="handleDown"
+  >
     <slot />
     <div
       v-for="el in active"
       v-show="!maximize"
       :key="el"
+      class="resizable-handle"
       :class="'resizable-' + el"
     />
   </div>
 </template>
 
 <script>
-const ELEMENT_MASK = {
-  "resizable-r": { bit: 0b0001, cursor: "e-resize" },
-  "resizable-rb": { bit: 0b0011, cursor: "se-resize" },
-  "resizable-b": { bit: 0b0010, cursor: "s-resize" },
-  "resizable-lb": { bit: 0b0110, cursor: "sw-resize" },
-  "resizable-l": { bit: 0b0100, cursor: "w-resize" },
-  "resizable-lt": { bit: 0b1100, cursor: "nw-resize" },
-  "resizable-t": { bit: 0b1000, cursor: "n-resize" },
-  "resizable-rt": { bit: 0b1001, cursor: "ne-resize" },
-  "drag-el": { bit: 0b1111, cursor: "pointer" },
+import {
+  calculateRectangle,
+  calculateRestoreRectangle,
+  constrainSize,
+} from "../utils/geometry";
+import { shouldCancelDrag } from "../utils/drag";
+
+const HANDLES = {
+  "resizable-r": { horizontal: "end", cursor: "e-resize" },
+  "resizable-rb": { horizontal: "end", vertical: "end", cursor: "se-resize" },
+  "resizable-b": { vertical: "end", cursor: "s-resize" },
+  "resizable-lb": { horizontal: "start", vertical: "end", cursor: "sw-resize" },
+  "resizable-l": { horizontal: "start", cursor: "w-resize" },
+  "resizable-lt": {
+    horizontal: "start",
+    vertical: "start",
+    cursor: "nw-resize",
+  },
+  "resizable-t": { vertical: "start", cursor: "n-resize" },
+  "resizable-rt": { horizontal: "end", vertical: "start", cursor: "ne-resize" },
+  "drag-el": { cursor: "pointer" },
 };
 
 const CALC_MASK = {
@@ -81,6 +98,10 @@ export default {
       default: undefined,
       type: String,
     },
+    dragCancelSelector: {
+      default: undefined,
+      type: String,
+    },
     maximize: {
       default: false,
       type: Boolean,
@@ -93,83 +114,93 @@ export default {
       type: Array,
     },
   },
-  emits: [
-    "mount",
-    "destroy",
-    "resize:start",
-    "resize:move",
-    "resize:end",
-    "drag:start",
-    "drag:move",
-    "drag:end",
-    "maximize",
-  ],
   data() {
     return {
       w: this.width,
       h: this.height,
-      minW: this.minWidth,
-      minH: this.minHeight,
-      maxW: this.maxWidth,
-      maxH: this.maxHeight,
       l: this.left,
       t: this.top,
-      mouseX: 0,
-      mouseY: 0,
-      offsetX: 0,
-      offsetY: 0,
-      parent: { width: 0, height: 0 },
-      resizeState: 0,
+      prevState: null,
+      interaction: null,
       dragElements: [],
-      dragState: false,
-      calcMap: 0b1111,
+      ownedDragElements: [],
+      dragObserver: null,
     };
   },
   computed: {
-    style() {
+    minW() {
+      return this.minWidth;
+    },
+    minH() {
+      return this.minHeight;
+    },
+    maxW() {
+      return this.maxWidth;
+    },
+    maxH() {
+      return this.maxHeight;
+    },
+    limits() {
       return {
-        ...(this.calcMap & CALC_MASK.w && {
-          width: typeof this.w === "number" ? this.w + "px" : this.w,
-        }),
-        ...(this.calcMap & CALC_MASK.h && {
-          height: typeof this.h === "number" ? this.h + "px" : this.h,
-        }),
-        ...(this.calcMap & CALC_MASK.l && {
-          left: typeof this.l === "number" ? this.l + "px" : this.l,
-        }),
-        ...(this.calcMap & CALC_MASK.t && {
-          top: typeof this.t === "number" ? this.t + "px" : this.t,
-        }),
+        minWidth: this.minW,
+        maxWidth: this.maxW,
+        minHeight: this.minH,
+        maxHeight: this.maxH,
       };
+    },
+    calcMap() {
+      return this.disableAttributes.reduce(
+        (mask, attr) => mask & ~CALC_MASK[attr],
+        0b1111
+      );
+    },
+    style() {
+      const style = {};
+      for (const [attr, name] of Object.entries({
+        w: "width",
+        h: "height",
+        l: "left",
+        t: "top",
+      })) {
+        if (this.calcMap & CALC_MASK[attr]) {
+          style[name] =
+            typeof this[attr] === "number" ? `${this[attr]}px` : this[attr];
+        }
+      }
+      return style;
     },
   },
   watch: {
-    maxWidth(value) {
-      this.maxW = value;
-    },
-    maxHeight(value) {
-      this.maxH = value;
-    },
-    minWidth(value) {
-      this.minW = value;
-    },
-    minHeight(value) {
-      this.minH = value;
+    limits(value, previous) {
+      const target = this.prevState || this;
+      if (
+        value.minWidth !== previous.minWidth ||
+        value.maxWidth !== previous.maxWidth
+      )
+        this.updateGeometry("w", target.w, true);
+      if (
+        value.minHeight !== previous.minHeight ||
+        value.maxHeight !== previous.maxHeight
+      )
+        this.updateGeometry("h", target.h, true);
     },
     width(value) {
-      typeof value === "number" && (this.w = value);
+      this.updateGeometry("w", value);
     },
     height(value) {
-      typeof value === "number" && (this.h = value);
+      this.updateGeometry("h", value);
     },
     left(value) {
-      typeof value === "number" && (this.l = value);
+      this.updateGeometry("l", value);
     },
     top(value) {
-      typeof value === "number" && (this.t = value);
+      this.updateGeometry("t", value);
     },
     dragSelector(selector) {
-      this.setupDragElements(selector);
+      this.$nextTick(() => {
+        if (this._isDestroyed) return;
+        this.setupDragElements(selector);
+      });
     },
     maximize(value) {
       this.setMaximize(value);
@@ -177,135 +208,179 @@ export default {
     },
   },
   mounted() {
-    if (!this.width) {
-      this.w = this.$el.parentElement.clientWidth;
-    } else if (this.width !== "auto") {
-      typeof this.width !== "number" && (this.w = this.$el.clientWidth);
-    }
-    if (!this.height) {
-      this.h = this.$el.parentElement.clientHeight;
-    } else if (this.height !== "auto") {
-      typeof this.height !== "number" && (this.h = this.$el.clientHeight);
-    }
-    typeof this.left !== "number" &&
-      (this.l = this.$el.offsetLeft - this.$el.parentElement.offsetLeft);
-    typeof this.top !== "number" &&
-      (this.t = this.$el.offsetTop - this.$el.parentElement.offsetTop);
-    this.minW && this.w < this.minW && (this.w = this.minW);
-    this.minH && this.h < this.minH && (this.h = this.minH);
-    this.maxW && this.w > this.maxW && (this.w = this.maxW);
-    this.maxH && this.h > this.maxH && (this.h = this.maxH);
-
+    this.w = constrainSize(
+      this.width == null
+        ? this.$el.parentElement.clientWidth
+        : typeof this.width === "number"
+        ? this.width
+        : this.readGeometry("w"),
+      this.minW,
+      this.maxW
+    );
+    this.h = constrainSize(
+      this.height == null
+        ? this.$el.parentElement.clientHeight
+        : typeof this.height === "number"
+        ? this.height
+        : this.readGeometry("h"),
+      this.minH,
+      this.maxH
+    );
+    if (this.width === "auto") this.w = "auto";
+    if (this.height === "auto") this.h = "auto";
+    if (typeof this.left !== "number") this.l = this.readGeometry("l");
+    if (typeof this.top !== "number") this.t = this.readGeometry("t");
     this.setMaximize(this.maximize);
     this.setupDragElements(this.dragSelector);
-
-    this.disableAttributes.forEach((attr) => {
-      switch (attr) {
-        case "l":
-          this.calcMap &= ~CALC_MASK.l;
-          break;
-        case "t":
-          this.calcMap &= ~CALC_MASK.t;
-          break;
-        case "w":
-          this.calcMap &= ~CALC_MASK.w;
-          break;
-        case "h":
-          this.calcMap &= ~CALC_MASK.h;
-      }
+    this.dragObserver = new MutationObserver(() =>
+      this.setupDragElements(this.dragSelector)
+    );
+    this.dragObserver.observe(this.$el, {
+      childList: true,
+      subtree: true,
+      attributes: true,
     });
-
-    document.documentElement.addEventListener(
-      "mousemove",
-      this.handleMove,
-      true
-    );
-    document.documentElement.addEventListener(
-      "mousedown",
-      this.handleDown,
-      true
-    );
-    document.documentElement.addEventListener("mouseup", this.handleUp, true);
-
-    document.documentElement.addEventListener(
-      "touchmove",
-      this.handleMove,
-      true
-    );
-    document.documentElement.addEventListener(
-      "touchstart",
-      this.handleDown,
-      true
-    );
-    document.documentElement.addEventListener("touchend", this.handleUp, true);
     this.emitEvent("mount");
   },
-  beforeUnmount() {
-    document.documentElement.removeEventListener(
-      "mousemove",
-      this.handleMove,
-      true
+  beforeDestroy() {
+    this.dragObserver.disconnect();
+    this.ownedDragElements.forEach((el) =>
+      el.removeAttribute("data-resizable-drag")
     );
-    document.documentElement.removeEventListener(
-      "mousedown",
-      this.handleDown,
-      true
-    );
-    document.documentElement.removeEventListener(
-      "mouseup",
-      this.handleUp,
-      true
-    );
-
-    document.documentElement.removeEventListener(
-      "touchmove",
-      this.handleMove,
-      true
-    );
-    document.documentElement.removeEventListener(
-      "touchstart",
-      this.handleDown,
-      true
-    );
-    document.documentElement.removeEventListener(
-      "touchend",
-      this.handleUp,
-      true
-    );
+    this.finishInteraction(false);
     this.emitEvent("destroy");
   },
   methods: {
+    measureBoxSize() {
+      const style = window.getComputedStyle(this.$el);
+      if (style.boxSizing === "border-box") return { width: 0, height: 0 };
+      const sum = (names) =>
+        names.reduce(
+          (total, name) => total + (parseFloat(style[name]) || 0),
+          0
+        );
+      return {
+        width: sum([
+          "paddingLeft",
+          "paddingRight",
+          "borderLeftWidth",
+          "borderRightWidth",
+        ]),
+        height: sum([
+          "paddingTop",
+          "paddingBottom",
+          "borderTopWidth",
+          "borderBottomWidth",
+        ]),
+      };
+    },
+    readGeometry(attr) {
+      const name = { w: "width", h: "height", l: "left", t: "top" }[attr];
+      const value = parseFloat(window.getComputedStyle(this.$el)[name]);
+      if (Number.isFinite(value)) return value;
+      return attr === "w"
+        ? this.$el.clientWidth
+        : attr === "h"
+        ? this.$el.clientHeight
+        : 0;
+    },
+    updateGeometry(attr, value, force = false) {
+      // Echoed event values must not overwrite the saved, non-maximized geometry.
+      if (!force && this[attr] === value) return;
+      const target = this.prevState || this;
+      const normalize = (size) => {
+        if (attr !== "w" && attr !== "h") return size;
+        const horizontal = attr === "w";
+        const positionAttr = horizontal ? "l" : "t";
+        const available =
+          force && this.fitParent && target === this
+            ? this.$el.parentElement[
+                horizontal ? "clientWidth" : "clientHeight"
+              ] -
+              (typeof this[positionAttr] === "number"
+                ? this[positionAttr]
+                : this.readGeometry(positionAttr)) -
+              this.measureBoxSize()[horizontal ? "width" : "height"]
+            : Infinity;
+        return constrainSize(
+          size,
+          horizontal ? this.minW : this.minH,
+          horizontal ? this.maxW : this.maxH,
+          available
+        );
+      };
+      const next = typeof value === "number" ? normalize(value) : value;
+      const changed = target[attr] !== next;
+      target[attr] = next;
+      if (
+        target === this &&
+        changed &&
+        (!force || !this.interaction?.restoring)
+      )
+        this.finishInteraction(true, true);
+      if (
+        target === this &&
+        typeof value === "string" &&
+        !(value === "auto" && (attr === "w" || attr === "h"))
+      ) {
+        this.$nextTick(() => {
+          if (!this._isDestroyed && this[attr] === value)
+            this[attr] = normalize(this.readGeometry(attr));
+        });
+      }
+    },
     setMaximize(value) {
-      const parentEl = this.$el.parentElement;
+      // Feedback after dragging out of maximize must keep that drag active.
+      if (value || this.prevState) this.finishInteraction(true);
       if (value) {
-        this.prevState = { w: this.w, h: this.h, l: this.l, t: this.t };
+        if (!this.prevState)
+          this.prevState = { w: this.w, h: this.h, l: this.l, t: this.t };
         this.t = this.l = 0;
-        this.w = parentEl.clientWidth;
-        this.h = parentEl.clientHeight;
+        const boxSize = this.measureBoxSize();
+        this.w = Math.max(
+          0,
+          this.$el.parentElement.clientWidth - boxSize.width
+        );
+        this.h = Math.max(
+          0,
+          this.$el.parentElement.clientHeight - boxSize.height
+        );
       } else {
         this.restoreSize();
       }
     },
     restoreSize() {
       if (this.prevState) {
-        this.l = this.prevState.l;
-        this.t = this.prevState.t;
-        this.h = this.prevState.h;
-        this.w = this.prevState.w;
+        const saved = this.prevState;
+        this.prevState = null;
+        Object.entries(saved).forEach(([attr, value]) =>
+          this.updateGeometry(attr, value, true)
+        );
       }
     },
-
     setupDragElements(selector) {
-      const oldList = this.$el.querySelectorAll(".drag-el");
-      oldList.forEach((el) => {
-        el.classList.remove("drag-el");
+      const elements = selector
+        ? Array.from(this.$el.querySelectorAll(selector))
+        : [];
+      if (selector && this.$el.matches(selector)) elements.unshift(this.$el);
+      const next = elements.filter(
+        (el) => el.closest(".resizable-component") === this.$el
+      );
+      this.ownedDragElements = this.ownedDragElements.filter((el) => {
+        if (next.includes(el)) return true;
+        el.removeAttribute("data-resizable-drag");
+        return false;
       });
-
-      const nodeList = this.$el.querySelectorAll(selector);
-      nodeList.forEach((el) => {
-        el.classList.add("drag-el");
+      next.forEach((el) => {
+        if (!el.hasAttribute("data-resizable-drag")) {
+          el.setAttribute("data-resizable-drag", "");
+          if (!this.ownedDragElements.includes(el))
+            this.ownedDragElements.push(el);
+        }
       });
-      this.dragElements = Array.prototype.slice.call(nodeList);
+      this.dragElements = next;
+      // Ignore our own marker mutations; external changes are already reflected in next.
+      this.dragObserver?.takeRecords();
     },
     emitEvent(eventName, additionalOptions) {
       this.$emit(eventName, {
@@ -318,158 +393,162 @@ export default {
         ...additionalOptions,
       });
     },
-    handleMove(event) {
-      if (this.resizeState !== 0) {
-        if (!this.dragState) {
-          if (isNaN(this.w)) {
-            this.w = this.$el.clientWidth;
-          }
-          if (isNaN(this.h)) {
-            this.h = this.$el.clientHeight;
-          }
-        }
-        let eventY, eventX;
-        if (event.touches && event.touches.length >= 0) {
-          eventY = event.touches[0].clientY;
-          eventX = event.touches[0].clientX;
-        } else {
-          eventY = event.clientY;
-          eventX = event.clientX;
-        }
-        if (this.maximize && this.prevState) {
-          const parentWidth = this.parent.width;
-          const parentHeight = this.parent.height;
-          this.restoreSize();
-          this.prevState = undefined;
-          this.t = eventY > parentHeight / 2 ? parentHeight - this.h : 0;
-          this.l = eventX > parentWidth / 2 ? parentWidth - this.w : 0;
-          this.emitEvent("maximize", { state: false });
-        }
-        let diffX = eventX - this.mouseX + this.offsetX,
-          diffY = eventY - this.mouseY + this.offsetY;
-        if (this.$el.getBoundingClientRect) {
-          const rect = this.$el.getBoundingClientRect();
-          const scaleX = rect.width / this.$el.offsetWidth || 1;
-          const scaleY = rect.height / this.$el.offsetHeight || 1;
-          diffX /= scaleX;
-          diffY /= scaleY;
-        }
-        this.offsetX = this.offsetY = 0;
-        if (this.resizeState & ELEMENT_MASK["resizable-r"].bit) {
-          if (!this.dragState && this.w + diffX < this.minW)
-            this.offsetX = diffX - (diffX = this.minW - this.w);
-          else if (
-            !this.dragState &&
-            this.maxW &&
-            this.w + diffX > this.maxW &&
-            (!this.fitParent || this.w + this.l < this.parent.width)
-          )
-            this.offsetX = diffX - (diffX = this.maxW - this.w);
-          else if (
-            this.fitParent &&
-            this.l + this.w + diffX > this.parent.width
-          )
-            this.offsetX =
-              diffX - (diffX = this.parent.width - this.l - this.w);
-
-          this.calcMap & CALC_MASK.w && (this.w += this.dragState ? 0 : diffX);
-        }
-        if (this.resizeState & ELEMENT_MASK["resizable-b"].bit) {
-          if (!this.dragState && this.h + diffY < this.minH)
-            this.offsetY = diffY - (diffY = this.minH - this.h);
-          else if (
-            !this.dragState &&
-            this.maxH &&
-            this.h + diffY > this.maxH &&
-            (!this.fitParent || this.h + this.t < this.parent.height)
-          )
-            this.offsetY = diffY - (diffY = this.maxH - this.h);
-          else if (
-            this.fitParent &&
-            this.t + this.h + diffY > this.parent.height
-          )
-            this.offsetY =
-              diffY - (diffY = this.parent.height - this.t - this.h);
-
-          this.calcMap & CALC_MASK.h && (this.h += this.dragState ? 0 : diffY);
-        }
-        if (this.resizeState & ELEMENT_MASK["resizable-l"].bit) {
-          if (!this.dragState && this.w - diffX < this.minW)
-            this.offsetX = diffX - (diffX = this.w - this.minW);
-          else if (
-            !this.dragState &&
-            this.maxW &&
-            this.w - diffX > this.maxW &&
-            this.l >= 0
-          )
-            this.offsetX = diffX - (diffX = this.w - this.maxW);
-          else if (this.fitParent && this.l + diffX < 0)
-            this.offsetX = diffX - (diffX = -this.l);
-
-          this.calcMap & CALC_MASK.l && (this.l += diffX);
-          this.calcMap & CALC_MASK.w && (this.w -= this.dragState ? 0 : diffX);
-        }
-        if (this.resizeState & ELEMENT_MASK["resizable-t"].bit) {
-          if (!this.dragState && this.h - diffY < this.minH)
-            this.offsetY = diffY - (diffY = this.h - this.minH);
-          else if (
-            !this.dragState &&
-            this.maxH &&
-            this.h - diffY > this.maxH &&
-            this.t >= 0
-          )
-            this.offsetY = diffY - (diffY = this.h - this.maxH);
-          else if (this.fitParent && this.t + diffY < 0)
-            this.offsetY = diffY - (diffY = -this.t);
-
-          this.calcMap & CALC_MASK.t && (this.t += diffY);
-          this.calcMap & CALC_MASK.h && (this.h -= this.dragState ? 0 : diffY);
-        }
-        this.mouseX = eventX;
-        this.mouseY = eventY;
-        const eventName = !this.dragState ? "resize:move" : "drag:move";
-        this.emitEvent(eventName);
-      }
+    measureRectangle() {
+      const read = (attr) =>
+        typeof this[attr] === "number" && this.calcMap & CALC_MASK[attr]
+          ? this[attr]
+          : this.readGeometry(attr);
+      return {
+        l: read("l"),
+        t: read("t"),
+        w: read("w"),
+        h: read("h"),
+      };
     },
     handleDown(event) {
+      if (this.interaction || event.button !== 0 || event.isPrimary === false)
+        return;
+      const target = event.target;
       if (
-        event.target.closest &&
-        event.target.closest(".resizable-component") !== this.$refs["parent"]
+        !target.closest ||
+        target.closest(".resizable-component") !== this.$el
       )
         return;
-      for (let elClass in ELEMENT_MASK) {
-        if (
-          this.$el.contains(event.target) &&
-          ((event.target.closest && event.target.closest(`.${elClass}`)) ||
-            event.target.classList.contains(elClass))
-        ) {
-          elClass === "drag-el" && (this.dragState = true);
-          document.body.style.cursor = ELEMENT_MASK[elClass].cursor;
-          if (event.touches && event.touches.length >= 1) {
-            this.mouseX = event.touches[0].clientX;
-            this.mouseY = event.touches[0].clientY;
-          } else {
-            event.preventDefault && event.preventDefault();
-            this.mouseX = event.clientX;
-            this.mouseY = event.clientY;
-          }
-          this.offsetX = this.offsetY = 0;
-          this.resizeState = ELEMENT_MASK[elClass].bit;
-          this.parent.height = this.$el.parentElement.clientHeight;
-          this.parent.width = this.$el.parentElement.clientWidth;
-          const eventName = !this.dragState ? "resize:start" : "drag:start";
-          this.emitEvent(eventName);
-          break;
-        }
+      const handle = Array.from(this.$el.children).find(
+        (el) => el.classList.contains("resizable-handle") && el.contains(target)
+      );
+      const handleClass =
+        handle &&
+        Object.keys(HANDLES).find((name) => handle.classList.contains(name));
+      const dragElement =
+        this.dragSelector && target.closest(this.dragSelector);
+      const dragging =
+        !handleClass && dragElement && this.$el.contains(dragElement);
+      if (dragging && shouldCancelDrag(target, this.dragCancelSelector)) return;
+      if ((!handleClass && !dragging) || (this.maximize && !dragging)) return;
+      if (event.cancelable) event.preventDefault();
+      const rect = this.$el.getBoundingClientRect();
+      const rectangle = this.measureRectangle();
+      if (!dragging) {
+        if (this.calcMap & CALC_MASK.w) this.w = rectangle.w;
+        if (this.calcMap & CALC_MASK.h) this.h = rectangle.h;
+      }
+      this.interaction = {
+        pointerId: event.pointerId,
+        dragging: Boolean(dragging),
+        direction: {
+          horizontal: HANDLES[handleClass || "drag-el"].horizontal,
+          vertical: HANDLES[handleClass || "drag-el"].vertical,
+        },
+        x: event.clientX,
+        y: event.clientY,
+        scaleX: rect.width / this.$el.offsetWidth || 1,
+        scaleY: rect.height / this.$el.offsetHeight || 1,
+        rectangle,
+        boxSize: this.measureBoxSize(),
+        parentWidth: this.$el.parentElement.clientWidth,
+        parentHeight: this.$el.parentElement.clientHeight,
+        cursor: document.body.style.cursor,
+      };
+      document.body.style.cursor = HANDLES[handleClass || "drag-el"].cursor;
+      document.addEventListener("pointermove", this.handleMove);
+      document.addEventListener("pointerup", this.handleUp);
+      document.addEventListener("pointercancel", this.handleUp);
+      this.$el.addEventListener("lostpointercapture", this.handleUp);
+      window.addEventListener("blur", this.handleUp);
+      if (this.$el.setPointerCapture)
+        this.$el.setPointerCapture(event.pointerId);
+      this.emitEvent(dragging ? "drag:start" : "resize:start");
+    },
+    async handleMove(event) {
+      const interaction = this.interaction;
+      if (!interaction || event.pointerId !== interaction.pointerId) return;
+      interaction.pointer = { x: event.clientX, y: event.clientY };
+      if (interaction.restoring) return;
+      const parentSize = {
+        width: interaction.parentWidth,
+        height: interaction.parentHeight,
+      };
+      if (interaction.dragging && this.prevState) {
+        interaction.restoring = true;
+        this.restoreSize();
+        this.emitEvent("maximize", { state: false });
+        await this.$nextTick();
+        if (this.interaction !== interaction) return;
+        const parentRect = this.$el.parentElement.getBoundingClientRect();
+        const restored = this.measureRectangle();
+        interaction.boxSize = this.measureBoxSize();
+        interaction.rectangle = calculateRestoreRectangle({
+          size: { width: restored.w, height: restored.h },
+          pointer: {
+            x: (interaction.pointer.x - parentRect.left) / interaction.scaleX,
+            y: (interaction.pointer.y - parentRect.top) / interaction.scaleY,
+          },
+          parentSize,
+          boxSize: interaction.boxSize,
+        });
+        this.l = interaction.rectangle.l;
+        this.t = interaction.rectangle.t;
+        interaction.restoring = false;
+      }
+      const rectangle = calculateRectangle({
+        start: interaction.rectangle,
+        delta: {
+          x: (interaction.pointer.x - interaction.x) / interaction.scaleX,
+          y: (interaction.pointer.y - interaction.y) / interaction.scaleY,
+        },
+        direction: interaction.direction,
+        dragging: interaction.dragging,
+        limits: this.limits,
+        parentSize,
+        fitParent: this.fitParent,
+        disabledAttributes: this.disableAttributes,
+        boxSize: interaction.boxSize,
+      });
+      if (this.calcMap & CALC_MASK.l) this.l = rectangle.l;
+      if (this.calcMap & CALC_MASK.t) this.t = rectangle.t;
+      if (!interaction.dragging) {
+        if (this.calcMap & CALC_MASK.w) this.w = rectangle.w;
+        if (this.calcMap & CALC_MASK.h) this.h = rectangle.h;
+      }
+      this.emitEvent(interaction.dragging ? "drag:move" : "resize:move");
+    },
+    handleUp(event) {
+      if (
+        this.interaction &&
+        (event.type === "blur" ||
+          event.pointerId === this.interaction.pointerId)
+      ) {
+        this.finishInteraction(true);
       }
     },
-    handleUp() {
-      if (this.resizeState !== 0) {
-        this.resizeState = 0;
-        document.body.style.cursor = "";
-        const eventName = !this.dragState ? "resize:end" : "drag:end";
-        this.emitEvent(eventName);
-        this.dragState = false;
+    finishInteraction(emitEnd, deferEnd = false) {
+      const interaction = this.interaction;
+      if (!interaction) return;
+      this.interaction = null;
+      document.removeEventListener("pointermove", this.handleMove);
+      document.removeEventListener("pointerup", this.handleUp);
+      document.removeEventListener("pointercancel", this.handleUp);
+      this.$el.removeEventListener("lostpointercapture", this.handleUp);
+      window.removeEventListener("blur", this.handleUp);
+      if (
+        this.$el.hasPointerCapture &&
+        this.$el.hasPointerCapture(interaction.pointerId)
+      ) {
+        this.$el.releasePointerCapture(interaction.pointerId);
+      }
+      document.body.style.cursor = interaction.cursor;
+      if (emitEnd) {
+        const emit = () =>
+          this.emitEvent(interaction.dragging ? "drag:end" : "resize:end");
+        if (deferEnd) {
+          // Let the entire prop batch and its CSS-size conversions settle first.
+          Promise.resolve().then(() => {
+            this.$nextTick(() => {
+              if (!this._isDestroyed) emit();
+            });
+          });
+        } else emit();
       }
     },
   },
@@ -481,123 +560,82 @@ export default {
   position: relative;
 }
 
-.resizable-component > .resizable-r {
+.resizable-component > .resizable-handle {
   display: block;
   position: absolute;
   z-index: 90;
   touch-action: none;
   user-select: none;
-  -moz-user-select: none;
   -webkit-user-select: none;
-  cursor: e-resize;
-  width: 12px;
-  right: -6px;
-  top: 0;
-  height: 100%;
 }
 
-.resizable-component > .resizable-rb {
-  display: block;
-  position: absolute;
+.resizable-component[data-resizable-drag],
+.resizable-component ::v-deep [data-resizable-drag] {
   touch-action: none;
-  user-select: none;
-  -moz-user-select: none;
-  -webkit-user-select: none;
-  cursor: se-resize;
-  width: 12px;
-  height: 12px;
-  right: -6px;
-  bottom: -6px;
-  z-index: 91;
 }
 
-.resizable-component > .resizable-b {
-  display: block;
-  position: absolute;
-  z-index: 90;
-  touch-action: none;
-  user-select: none;
-  -moz-user-select: none;
-  -webkit-user-select: none;
-  cursor: s-resize;
-  height: 12px;
-  bottom: -6px;
-  width: 100%;
-  left: 0;
-}
-
-.resizable-component > .resizable-lb {
-  display: block;
-  position: absolute;
-  touch-action: none;
-  user-select: none;
-  -moz-user-select: none;
-  -webkit-user-select: none;
-  cursor: sw-resize;
+.resizable-r,
+.resizable-l {
   width: 12px;
-  height: 12px;
-  left: -6px;
-  bottom: -6px;
-  z-index: 91;
-}
-
-.resizable-component > .resizable-l {
-  display: block;
-  position: absolute;
-  z-index: 90;
-  touch-action: none;
-  user-select: none;
-  -moz-user-select: none;
-  -webkit-user-select: none;
-  cursor: w-resize;
-  width: 12px;
-  left: -6px;
   height: 100%;
   top: 0;
 }
-
-.resizable-component > .resizable-lt {
-  display: block;
-  position: absolute;
-  touch-action: none;
-  user-select: none;
-  -moz-user-select: none;
-  -webkit-user-select: none;
-  cursor: nw-resize;
-  width: 12px;
+.resizable-b,
+.resizable-t {
   height: 12px;
-  left: -6px;
-  top: -6px;
-  z-index: 91;
-}
-
-.resizable-component > .resizable-t {
-  display: block;
-  position: absolute;
-  z-index: 90;
-  touch-action: none;
-  user-select: none;
-  -moz-user-select: none;
-  -webkit-user-select: none;
-  cursor: n-resize;
-  height: 12px;
-  top: -6px;
   width: 100%;
   left: 0;
 }
-
+.resizable-component > .resizable-rb,
+.resizable-component > .resizable-lb,
+.resizable-component > .resizable-lt,
 .resizable-component > .resizable-rt {
-  display: block;
-  position: absolute;
-  touch-action: none;
-  user-select: none;
-  -moz-user-select: none;
-  -webkit-user-select: none;
-  cursor: ne-resize;
   width: 12px;
   height: 12px;
-  right: -6px;
-  top: -6px;
   z-index: 91;
+}
+.resizable-r,
+.resizable-rb,
+.resizable-rt {
+  right: -6px;
+}
+.resizable-l,
+.resizable-lb,
+.resizable-lt {
+  left: -6px;
+}
+.resizable-b,
+.resizable-rb,
+.resizable-lb {
+  bottom: -6px;
+}
+.resizable-t,
+.resizable-lt,
+.resizable-rt {
+  top: -6px;
+}
+.resizable-r {
+  cursor: e-resize;
+}
+.resizable-rb {
+  cursor: se-resize;
+}
+.resizable-b {
+  cursor: s-resize;
+}
+.resizable-lb {
+  cursor: sw-resize;
+}
+.resizable-l {
+  cursor: w-resize;
+}
+.resizable-lt {
+  cursor: nw-resize;
+}
+.resizable-t {
+  cursor: n-resize;
+}
+.resizable-rt {
+  cursor: ne-resize;
 }
 </style>

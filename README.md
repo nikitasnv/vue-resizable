@@ -17,8 +17,12 @@
 ## Installation
 
 ```sh
-npm install vue-resizable --save
+npm install vue-resizable@vue2 --save
 ```
+
+This source tree and its builds target **Vue 2.6.14 and Vue 2.7** (`vue >=2.6.14 <3`). For Vue 3, use the default `vue-resizable` release and the [`master` branch](https://github.com/nikitasnv/vue-resizable/tree/master). Publishing from this branch defaults to the `vue2` npm tag.
+
+The package's `import` export points to the ESM build and supports import and server rendering without a browser DOM. The `module` field also points to ESM for older bundlers. The `require` export keeps the existing UMD entry; the public `dist/*`, `src/*`, and `package.json` subpaths remain available. Styles are included automatically in a browser. For a browser script tag, the UMD global exposes the component as `window["vue-resizable"].default`.
 
 ## Basic usage
 
@@ -52,19 +56,33 @@ export default {
 
 | Property            |  Data attribute    | Type    | Default | Description                                                                                                                                                                                                                                                                           |
 |:--------------------|------|:--------|:--------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| width               |   w   | [Number, String] | undefined   | Width in pixel or 'auto'           
+| width               |   w   | [Number, String] | undefined   | Width in pixels, CSS length/percentage, or 'auto'
 | minWidth            |   minW   | Number  | 0    |  Minimum width     
 | maxWidth            |   maxW    | Number | undefined   | Maximum width
-| height               |  h   | [Number, String]  | undefined    | Height in pixel, or 'auto'                                                                                                                                                                                                                    |
+| height               |  h   | [Number, String]  | undefined    | Height in pixels, CSS length/percentage, or 'auto'                                                                                                                                                                                                                    |
 | minHeight        | minH | Number  | 0       | Minimum height                                                                                                                                                                                                                |
 | maxHeight    | maxH | Number  | undefined       | Maximum height                                                                                                                                                                                                                              |
 | left          |   l    | [Number, String] | 0    | Offset left from parent                                                                                                                                                                                                                                                     |
 | top       | t | [Number, String] | 0   | Offset top from parent          
 | active     |    | Array | ['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt']   | Active handlers for resize    
-| fitParent    |     | Boolean | false  | Respect parent's size on resizing
-| dragSelector | dragElements  |  String | undefined | Drag selector
+| fitParent    |     | Boolean | false  | Respect parent's size on resizing and dragging
+| dragSelector | dragElements  |  String | undefined | Drag selector; omit or unset to prevent starting a drag
+| dragCancelSelector | | String | undefined | Additional selector for descendants that must not start a drag
 | maximize | | Boolean | false| Maximize element to parent size
 | disableAttributes | calcMap | Array | [] | Disable changes to attributes, Available values: ['l', 't', 'w', 'h']
+
+Interactive elements (`input`, `textarea`, `select`, `button`, links, and editable content) keep their native behavior inside a drag area. For a custom editor or control, exclude its subtree:
+
+```vue
+<vue-resizable drag-selector=".window-content" drag-cancel-selector=".custom-editor">
+  <div class="window-content">
+    <div>Drag here</div>
+    <div class="custom-editor">...</div>
+  </div>
+</vue-resizable>
+```
+
+Assigned CSS sizes such as `75%` and `calc(50% - 20px)` are resolved to pixels on mount or when the prop changes. They do not automatically follow later parent size changes. A manual resize also works in pixels. Numeric and resolved CSS sizes are clamped when size props or min/max limits change. `auto` remains CSS-driven until resizing starts. While maximized, geometry updates apply to the saved restore state; echoed values matching the displayed geometry are ignored.
 
 ## Events
 
@@ -91,6 +109,33 @@ npm install
 npm run dev
 ```
 It starts [webpack-dev-server](https://github.com/webpack/webpack-dev-server) on `localhost:8080` with [Demo](./docs) page.
+
+Webpack stays on 5.109.x for Vue CLI / vue-loader 15 compatibility: newer versions report the loader's unused default CSS imports as missing exports.
+
+Run the regression tests with Node.js 22.12+:
+
+```bash
+npm test
+npm run eslint:check -- src tests docs scripts vite.config.mjs vue.config.js
+npm run build
+```
+
+Browser tests install the archive produced by `npm pack` into a separate Vue/Vite application. They check both development and production imports, the existing UMD build, CSS dimensions, resizing, dragging, and text input:
+
+```bash
+npx playwright install --with-deps chromium
+npm run test:browser
+```
+
+The consumer installation uses npm's offline cache populated by `npm install`. The tests build the library first and do not publish anything. CI runs the same unit and browser scenarios on Vue 2.6.14 and 2.7.16, with matching template compiler and server renderer versions. The demo also uses Vue 2.
+
+External geometry changes stop pointer handling immediately. The corresponding end event is emitted after the entire prop batch and CSS-size conversions have settled, carrying the final geometry. Echoing the current geometry from move events keeps the gesture active. Limit updates affect only the corresponding axis and retain the parent boundary priority.
+
+Changing `maximize` ends an active gesture with its corresponding end event. Dragging out of maximize restores `auto` dimensions after the DOM update; a canceled gesture does not resume afterward. Drag elements inserted or updated in slots are detected automatically and marked with `data-resizable-drag`; their classes are preserved.
+
+Dragging and resizing use Pointer Events. A canceled pointer or window blur ends the current interaction and emits the corresponding `drag:end` or `resize:end` event.
+
+With `fitParent`, resizing and dragging respect the outer box, including padding and borders. Numeric dimensions and min/max limits retain their CSS sizing meaning for the selected `box-sizing`. The parent boundary takes precedence when `minWidth` or `minHeight` cannot fit. A maximum of `0` means unlimited, as in earlier versions.
 
 ## License
 

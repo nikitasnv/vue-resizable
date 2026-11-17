@@ -1,7 +1,7 @@
 {
   "name": "vue-resizable",
-  "version": "1.3.4",
-  "description": "Vue2 component that allows to resize and drag elements",
+  "version": "1.4.0",
+  "description": "Vue 2 component that allows resizing and dragging elements",
   "main": "./dist/vue-resizable.umd.min.js",
   "files": [
     "dist/*",
@@ -9,24 +9,36 @@
   ],
   "scripts": {
     "dev": "vue-cli-service serve ./docs/index.js",
-    "build": "vue-cli-service build --target lib --name vue-resizable ./src/main.js",
+    "build": "vue-cli-service build --target lib --name vue-resizable ./src/main.js && npm run build:esm",
     "build:doc": "vue-cli-service build ./docs/index.js",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "test": "node --test tests/*.test.mjs",
+    "eslint:check": "eslint --ext .js,.mjs,.vue",
+    "test:browser": "npm run build && node --test tests/browser/*.test.mjs",
+    "build:esm": "vite build --config vite.config.mjs"
   },
   "devDependencies": {
-    "core-js": "^3.8.3",
-    "vue": "^2.6.14",
-    "vue-template-compiler": "^2.6.14",
     "@babel/core": "^7.12.16",
     "@babel/eslint-parser": "^7.12.16",
     "@vue/cli-plugin-babel": "~5.0.0",
     "@vue/cli-plugin-eslint": "~5.0.0",
     "@vue/cli-service": "~5.0.0",
+    "@vue/test-utils": "^1.3.6",
+    "core-js": "^3.8.3",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-vue": "^8.0.3",
-    "prettier": "^2.4.1"
+    "jsdom": "^26.1.0",
+    "playwright": "^1.56.1",
+    "prettier": "^2.4.1",
+    "vite": "^8.3.8",
+    "vue": "2.6.14",
+    "vue-template-compiler": "2.6.14",
+    "vue-server-renderer": "2.6.14",
+    "rollup-plugin-vue": "^5.1.9",
+    "vue-runtime-helpers": "^1.1.2",
+    "webpack": "~5.109.2"
   },
   "author": "NikSnV",
   "license": "MIT",
@@ -40,5 +52,22 @@
     "component",
     "resizable",
     "resize"
-  ]
+  ],
+  "peerDependencies": {
+    "vue": "^2.6.14"
+  },
+  "module": "./dist/vue-resizable.esm.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/vue-resizable.esm.mjs",
+      "require": "./dist/vue-resizable.umd.min.js",
+      "default": "./dist/vue-resizable.esm.mjs"
+    },
+    "./dist/*": "./dist/*",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "tag": "vue2"
+  }
 }

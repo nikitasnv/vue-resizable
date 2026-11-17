@@ -1,0 +1,25 @@
+name: Tests
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        vue: ["2.6.14", "2.7.16"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm install --no-save vue@${{ matrix.vue }} vue-template-compiler@${{ matrix.vue }} vue-server-renderer@${{ matrix.vue }}
+      - run: npm run eslint:check -- src tests docs scripts vite.config.mjs vue.config.js
+      - run: npm test
+      - run: npm run build:doc
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
