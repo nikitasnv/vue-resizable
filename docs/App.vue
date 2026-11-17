@@ -126,10 +126,12 @@
       </div>
       <div class="table-row">
         <div class="table-cell">
-          lockAspectRatio:<input type="checkbox" v-model.number="lockAspectRatio" />
+          lockAspectRatio:<input
+            type="checkbox"
+            v-model.number="lockAspectRatio"
+          />
         </div>
-        <div class="table-cell">
-        </div>
+        <div class="table-cell"></div>
       </div>
       <div class="table-row" style="text-align: left">
         <div class="table-cell" style="padding: 0 20px; width: 100%">
