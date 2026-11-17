@@ -29,14 +29,16 @@
           <div class="drag-container-1"><span>drag_1</span></div>
           <div class="table-container">
             <table>
-              <tr>
-                <td>w:{{ width }}</td>
-                <td>h:{{ height }}</td>
-              </tr>
-              <tr>
-                <td>l:{{ left }}</td>
-                <td>t:{{ top }}</td>
-              </tr>
+              <tbody>
+                <tr>
+                  <td>w:{{ width }}</td>
+                  <td>h:{{ height }}</td>
+                </tr>
+                <tr>
+                  <td>l:{{ left }}</td>
+                  <td>t:{{ top }}</td>
+                </tr>
+              </tbody>
             </table>
           </div>
           <div class="drag-container-2">drag_2</div>

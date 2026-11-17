@@ -1,3 +1,3 @@
-import VueResizable from "./components/vue-resizable";
+import VueResizable from "./components/vue-resizable.vue";
 
 export default VueResizable;
