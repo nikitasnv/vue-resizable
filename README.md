@@ -66,6 +66,7 @@ export default {
 | top       | t | [Number, String] | 0   | Offset top from parent          
 | active     |    | Array | ['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt']   | Active handlers for resize    
 | fitParent    |     | Boolean | false  | Respect parent's size on resizing and dragging
+| lockAspectRatio | | Boolean | false | Preserve the width/height ratio during resizing
 | dragSelector | dragElements  |  String | undefined | Drag selector; omit or unset to prevent starting a drag
 | dragCancelSelector | | String | undefined | Additional selector for descendants that must not start a drag
 | maximize | | Boolean | false| Maximize element to parent size
@@ -134,6 +135,8 @@ Changing `maximize` ends an active gesture with its corresponding end event. Dra
 Dragging and resizing use Pointer Events. A canceled pointer or window blur ends the current interaction and emits the corresponding `drag:end` or `resize:end` event.
 
 With `fitParent`, resizing and dragging respect the outer box, including padding and borders. Numeric dimensions and min/max limits retain their CSS sizing meaning for the selected `box-sizing`. The parent boundary takes precedence when `minWidth` or `minHeight` cannot fit. A maximum of `0` means unlimited, as in earlier versions.
+
+`lockAspectRatio` preserves the ratio of the measured CSS width and height at the start of each resize. CSS sizes such as `auto` and percentages are measured before resizing. Side handles also resize the other dimension, keeping that dimension's starting position fixed; corner handles follow the original diagonal and keep the opposite corner fixed. Both axes' min/max and parent constraints apply together, with upper bounds taking precedence over incompatible minimums. Padding and borders count toward parent boundaries. If either size is disabled through `disableAttributes`, locked resizing is blocked. If either starting dimension is zero, that gesture uses ordinary resizing. Changes to `lockAspectRatio` take effect on the next gesture; dragging, maximize and external prop updates retain their existing behavior.
 
 ## License
 

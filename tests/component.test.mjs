@@ -595,3 +595,40 @@ test("unmount suppresses a deferred external-update end event", async () => {
   assert.equal(ends.length, 0);
   assert.equal(destroys, 1);
 });
+
+test("aspect lock resizes both dimensions and emits the constrained geometry", () => {
+  const w = create({
+    width: 200,
+    height: 100,
+    lockAspectRatio: true,
+    maxHeight: 120,
+  });
+  down(w);
+  pointer(document, "pointermove", 100);
+  pointer(document, "pointerup", 100);
+  assert.deepEqual([w.vm.w, w.vm.h], [240, 120]);
+  const end = w.emitted("resize:end")[0][0];
+  assert.deepEqual([end.width, end.height], [240, 120]);
+});
+
+test("aspect lock uses local scaled coordinates and keeps the opposite corner fixed", () => {
+  const w = create(
+    { width: 200, height: 100, left: 100, top: 100, lockAspectRatio: true },
+    2
+  );
+  down(w, "lt");
+  pointer(document, "pointermove", -200, -100);
+  assert.deepEqual([w.vm.l, w.vm.t, w.vm.w, w.vm.h], [0, 50, 300, 150]);
+});
+
+test("aspect lock changes apply on the next gesture", async () => {
+  const w = create({ width: 200, height: 100, lockAspectRatio: true });
+  down(w);
+  await w.setProps({ lockAspectRatio: false });
+  pointer(document, "pointermove", 100);
+  pointer(document, "pointerup");
+  assert.deepEqual([w.vm.w, w.vm.h], [300, 150]);
+  down(w);
+  pointer(document, "pointermove", 100);
+  assert.deepEqual([w.vm.w, w.vm.h], [400, 150]);
+});

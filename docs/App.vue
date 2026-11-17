@@ -7,6 +7,7 @@
         :dragSelector="dragSelector"
         :active="handlers"
         :fit-parent="fit"
+        :lock-aspect-ratio="lockAspectRatio"
         :maximize="maximize"
         :max-width="checkEmpty(maxW)"
         :max-height="checkEmpty(maxH)"
@@ -31,12 +32,12 @@
             <table>
               <tbody>
                 <tr>
-                  <td>w:{{ width }}</td>
-                  <td>h:{{ height }}</td>
+                  <td>w:{{ formatGeometry(width) }}</td>
+                  <td>h:{{ formatGeometry(height) }}</td>
                 </tr>
                 <tr>
-                  <td>l:{{ left }}</td>
-                  <td>t:{{ top }}</td>
+                  <td>l:{{ formatGeometry(left) }}</td>
+                  <td>t:{{ formatGeometry(top) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -123,6 +124,13 @@
           maximize:<input type="checkbox" v-model.number="maximize" />
         </div>
       </div>
+      <div class="table-row">
+        <div class="table-cell">
+          lockAspectRatio:<input type="checkbox" v-model.number="lockAspectRatio" />
+        </div>
+        <div class="table-cell">
+        </div>
+      </div>
       <div class="table-row" style="text-align: left">
         <div class="table-cell" style="padding: 0 20px; width: 100%">
           lastEvent: {{ event }}
@@ -152,12 +160,16 @@ export default {
       minW: 100,
       minH: 100,
       fit: true,
+      lockAspectRatio: false,
       maximize: false,
       event: "",
       dragSelector: ".drag-container-1, .drag-container-2",
     };
   },
   methods: {
+    formatGeometry(value) {
+      return typeof value === "number" ? Math.round(value) : value;
+    },
     eHandler(data) {
       this.width = data.width;
       this.height = data.height;
