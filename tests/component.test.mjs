@@ -168,6 +168,142 @@ test("fitParent and maximum apply together in the component", () => {
   pointer(document, "pointermove", 250);
   assert.equal(w.vm.w, 300);
 });
+test("CSS maximums constrain mounting, resizing and external updates", async () => {
+  const w = create({
+    width: 200,
+    height: 180,
+    maxWidth: "150px",
+    maxHeight: "120px",
+  });
+  assert.deepEqual([w.vm.w, w.vm.h], [150, 120]);
+  down(w, "rb");
+  pointer(document, "pointermove", 100, 100);
+  assert.deepEqual([w.vm.w, w.vm.h], [150, 120]);
+  await w.setProps({ maxWidth: "80px", maxHeight: "90px" });
+  await nextTick();
+  await nextTick();
+  assert.equal(w.vm.interaction, null);
+  assert.deepEqual([w.vm.w, w.vm.h], [80, 90]);
+  assert.equal(w.emitted("resize:end").length, 1);
+  await w.setProps({
+    maxWidth: 0,
+    maxHeight: undefined,
+    width: 210,
+    height: 190,
+  });
+  assert.deepEqual([w.vm.w, w.vm.h], [210, 190]);
+});
+test("CSS minimums constrain mounting, resizing and external updates", async () => {
+  const w = create({
+    width: 20,
+    height: 10,
+    minWidth: "150px",
+    minHeight: "120px",
+  });
+  assert.deepEqual([w.vm.w, w.vm.h], [150, 120]);
+  down(w, "rb");
+  pointer(document, "pointermove", -100, -100);
+  assert.deepEqual([w.vm.w, w.vm.h], [150, 120]);
+  await w.setProps({ minWidth: "180px", minHeight: "140px" });
+  await nextTick();
+  await nextTick();
+  assert.equal(w.vm.interaction, null);
+  assert.deepEqual([w.vm.w, w.vm.h], [180, 140]);
+  assert.equal(w.emitted("resize:end").length, 1);
+  await w.setProps({
+    minWidth: 0,
+    minHeight: "invalid",
+    width: 30,
+    height: 40,
+  });
+  assert.deepEqual([w.vm.w, w.vm.h], [30, 40]);
+});
+
+test("CSS minimums defer to maximums and parent boundaries", async () => {
+  const w = create({
+    minWidth: "200px",
+    minHeight: "180px",
+    maxWidth: "150px",
+    maxHeight: "120px",
+    fitParent: true,
+  });
+  assert.deepEqual([w.vm.w, w.vm.h], [150, 120]);
+  await w.setProps({
+    maxWidth: undefined,
+    maxHeight: undefined,
+    minWidth: "400px",
+    minHeight: "400px",
+  });
+  assert.deepEqual([w.vm.w, w.vm.h], [300, 300]);
+});
+
+test("CSS minimum observation grows sizes and stops after switching to numbers", async () => {
+  const original = window.ResizeObserver;
+  let notify,
+    disconnects = 0;
+  window.ResizeObserver = class {
+    constructor(callback) {
+      notify = callback;
+    }
+    observe() {}
+    disconnect() {
+      disconnects++;
+    }
+  };
+  try {
+    const w = create({ minWidth: "50%" });
+    notify();
+    await nextTick();
+    assert.equal(w.vm.w, 150);
+    Object.defineProperty(w.element.parentElement, "clientWidth", {
+      configurable: true,
+      value: 600,
+    });
+    notify();
+    await nextTick();
+    assert.equal(w.vm.w, 300);
+    await w.setProps({ minWidth: 0 });
+    assert.equal(disconnects, 1);
+    assert.equal(w.vm.sizeObserver, null);
+  } finally {
+    window.ResizeObserver = original;
+  }
+});
+test("CSS limit observation follows parent changes and disconnects on unmount", async () => {
+  const original = window.ResizeObserver;
+  let notify,
+    observed,
+    disconnects = 0;
+  window.ResizeObserver = class {
+    constructor(callback) {
+      notify = callback;
+    }
+    observe(element) {
+      observed = element;
+    }
+    disconnect() {
+      disconnects++;
+    }
+  };
+  try {
+    const w = create({ width: 200, maxWidth: "50%" });
+    notify();
+    await nextTick();
+    assert.equal(w.vm.w, 150);
+    assert.equal(observed, w.element.parentElement);
+    Object.defineProperty(observed, "clientWidth", {
+      configurable: true,
+      value: 200,
+    });
+    notify();
+    await nextTick();
+    assert.equal(w.vm.w, 100);
+    w.destroy();
+    assert.equal(disconnects, 1);
+  } finally {
+    window.ResizeObserver = original;
+  }
+});
 test("dragging preserves auto sizes and handles descendants", () => {
   const w = create({ width: "auto", height: "auto", dragSelector: ".drag" });
   pointer(w.find(".drag span").element, "pointerdown");
@@ -516,6 +652,7 @@ test("a size-changing limit update ends resize without a stale cross-axis rollba
   pointer(document, "pointermove", 20);
   await w.setProps({ maxHeight: 80 });
   await nextTick();
+  await nextTick();
   assert.equal(w.vm.interaction, null);
   pointer(document, "pointermove", 30);
   assert.deepEqual([w.vm.w, w.vm.h], [120, 80]);
@@ -628,4 +765,68 @@ test("aspect lock changes apply on the next gesture", async () => {
   down(w);
   pointer(document, "pointermove", 100);
   assert.deepEqual([w.vm.w, w.vm.h], [400, 150]);
+});
+
+test("resize steps accumulate from gesture start and changes apply on the next gesture", async () => {
+  const w = create({ width: 105, height: 85, step: 20 });
+  down(w);
+  pointer(document, "pointermove", 9);
+  assert.equal(w.vm.w, 105);
+  pointer(document, "pointermove", 13);
+  assert.equal(w.vm.w, 125);
+  await w.setProps({ step: 50 });
+  pointer(document, "pointermove", 32);
+  assert.equal(w.vm.w, 145);
+  pointer(document, "pointerup");
+  assert.equal(w.emitted("resize:end")[0][0].width, 145);
+  down(w);
+  pointer(document, "pointermove", 32);
+  assert.equal(w.vm.w, 195);
+});
+
+test("fractional resize steps use local coordinates under scaling", () => {
+  const w = create({ width: 100.25, height: 80.75, step: 0.5 }, 2);
+  down(w, "rb");
+  pointer(document, "pointermove", 0.6, 1.6);
+  assert.deepEqual([w.vm.w, w.vm.h], [100.75, 81.75]);
+});
+
+test("percentage steps capture parent size and prop changes for the next gesture", async () => {
+  const w = create({ width: 105, height: 85, step: "10%" });
+  const parent = w.element.parentElement;
+  Object.defineProperty(parent, "clientHeight", {
+    configurable: true,
+    value: 200,
+  });
+  down(w, "rb");
+  pointer(document, "pointermove", 17, 11);
+  assert.deepEqual([w.vm.w, w.vm.h], [135, 105]);
+  Object.defineProperties(parent, {
+    clientWidth: { configurable: true, value: 600 },
+    clientHeight: { configurable: true, value: 400 },
+  });
+  await w.setProps({ step: "20%" });
+  pointer(document, "pointermove", 32, 21);
+  assert.deepEqual([w.vm.w, w.vm.h], [135, 105]);
+  pointer(document, "pointerup");
+  down(w, "rb");
+  pointer(document, "pointermove", 61, 41);
+  assert.deepEqual([w.vm.w, w.vm.h], [255, 185]);
+});
+
+test("percentage steps preserve aspect ratio under scaling", () => {
+  const w = create(
+    { width: 200, height: 100, step: "10%", lockAspectRatio: true },
+    2
+  );
+  Object.defineProperties(w.element.parentElement, {
+    clientWidth: { configurable: true, value: 500 },
+    clientHeight: { configurable: true, value: 200 },
+  });
+  down(w, "rb");
+  pointer(document, "pointermove", 92, 36);
+  pointer(document, "pointerup");
+  assert.deepEqual([w.vm.w, w.vm.h], [250, 125]);
+  const end = w.emitted("resize:end")[0][0];
+  assert.deepEqual([end.width, end.height], [250, 125]);
 });

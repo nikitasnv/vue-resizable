@@ -8,15 +8,16 @@
         :active="handlers"
         :fit-parent="fit"
         :lock-aspect-ratio="lockAspectRatio"
+        :step="checkEmpty(step)"
         :maximize="maximize"
         :max-width="checkEmpty(maxW)"
         :max-height="checkEmpty(maxH)"
         :min-width="checkEmpty(minW)"
         :min-height="checkEmpty(minH)"
-        :width="width"
-        :height="height"
-        :left="left"
-        :top="top"
+        :width="checkEmpty(width)"
+        :height="checkEmpty(height)"
+        :left="checkEmpty(left)"
+        :top="checkEmpty(top)"
         @mount="eHandler"
         @resize:move="eHandler"
         @resize:start="eHandler"
@@ -62,58 +63,34 @@
       </div>
       <div class="table-row">
         <div class="table-cell">
-          minWidth:<input
-            class="table-input"
-            type="number"
-            v-model.number="minW"
-          />
+          minWidth:<input class="table-input" v-model="minW" />
         </div>
         <div class="table-cell">
-          maxWidth:<input
-            class="table-input"
-            type="number"
-            v-model.number="maxW"
-          />
+          maxWidth:<input class="table-input" v-model="maxW" />
         </div>
       </div>
       <div class="table-row">
         <div class="table-cell">
-          minHeight:<input
-            class="table-input"
-            type="number"
-            v-model.number="minH"
-          />
+          minHeight:<input class="table-input" v-model="minH" />
         </div>
         <div class="table-cell">
-          maxHeight:<input
-            class="table-input"
-            type="number"
-            v-model.number="maxH"
-          />
+          maxHeight:<input class="table-input" v-model="maxH" />
         </div>
       </div>
       <div class="table-row">
         <div class="table-cell">
-          width:<input
-            class="table-input"
-            type="number"
-            v-model.number="width"
-          />
+          width:<input class="table-input" v-model="width" />
         </div>
         <div class="table-cell">
-          height:<input
-            class="table-input"
-            type="number"
-            v-model.number="height"
-          />
+          height:<input class="table-input" v-model="height" />
         </div>
       </div>
       <div class="table-row">
         <div class="table-cell">
-          left:<input class="table-input" type="number" v-model.number="left" />
+          left:<input class="table-input" v-model="left" />
         </div>
         <div class="table-cell">
-          top:<input class="table-input" type="number" v-model.number="top" />
+          top:<input class="table-input" v-model="top" />
         </div>
       </div>
       <div class="table-row">
@@ -131,7 +108,9 @@
             v-model.number="lockAspectRatio"
           />
         </div>
-        <div class="table-cell"></div>
+        <div class="table-cell">
+          step:<input class="table-input" v-model="step" />
+        </div>
       </div>
       <div class="table-row" style="text-align: left">
         <div class="table-cell" style="padding: 0 20px; width: 100%">
@@ -163,6 +142,7 @@ export default {
       minH: 100,
       fit: true,
       lockAspectRatio: false,
+      step: 0,
       maximize: false,
       event: "",
       dragSelector: ".drag-container-1, .drag-container-2",
@@ -183,12 +163,10 @@ export default {
       }
     },
     checkEmpty(value) {
-      return typeof value !== "number" ? 0 : value;
-    },
-  },
-  filters: {
-    checkEmpty(value) {
-      return typeof value !== "number" ? 0 : value;
+      if (typeof value !== "string")
+        return typeof value === "number" ? value : 0;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : value;
     },
   },
 };

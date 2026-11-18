@@ -10,12 +10,16 @@ const props = Vue.observable({
   dragSelector: ".content",
   dragCancelSelector: ".custom-editor",
   maximize: false,
+  ...JSON.parse(new URLSearchParams(location.search).get("props") || "{}"),
 });
 const state = Vue.observable({
   boxStyle: {},
   contentStyle: { height: "100%", background: "#eee" },
   lateHandle: false,
   parentWidth: 800,
+  parentStyle: JSON.parse(
+    new URLSearchParams(location.search).get("parentStyle") || "{}"
+  ),
 });
 function updateProps(value) {
   Object.entries(value).forEach(([key, value]) => Vue.set(props, key, value));
@@ -42,6 +46,7 @@ const app = new Vue({
           height: "400px",
           position: "relative",
           margin: "60px",
+          ...state.parentStyle,
         },
       },
       [
@@ -123,6 +128,10 @@ window.fixture = {
   },
   async setParentWidth(value) {
     state.parentWidth = value;
+    await nextTick();
+  },
+  async setParentStyle(value) {
+    state.parentStyle = value;
     await nextTick();
   },
   async setProps(value) {
