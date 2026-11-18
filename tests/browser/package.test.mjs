@@ -219,6 +219,663 @@ test("percentage width updates resolve against the current parent", async () => 
   assert.equal(await width(), 480);
 });
 
+const dimensions = () =>
+  page.locator(".resizable-component").evaluate((el) => {
+    const style = getComputedStyle(el);
+    return [parseFloat(style.width), parseFloat(style.height)];
+  });
+
+async function resizeBy(handle, x, y = 0) {
+  const box = await page.locator(`.resizable-${handle}`).boundingBox();
+  const startX = box.x + box.width / 2;
+  const startY = box.y + box.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + x, startY + y);
+  await page.mouse.up();
+}
+
+test("resize steps keep opposite edges anchored and yield to CSS limits", async () => {
+  await page.evaluate(() =>
+    window.fixture.setProps({
+      width: 105,
+      height: 85,
+      minWidth: 0,
+      left: 100,
+      top: 100,
+      fitParent: false,
+      step: 20,
+    })
+  );
+  await resizeBy("rb", 13, 29);
+  assert.deepEqual(await dimensions(), [125, 105]);
+  await resizeBy("lt", -13, -29);
+  assert.deepEqual(await dimensions(), [145, 125]);
+  assert.deepEqual(await page.evaluate(() => window.fixture.state()), {
+    width: 145,
+    left: 80,
+    top: 80,
+  });
+  await page.evaluate(() =>
+    window.fixture.setProps({ maxWidth: "160px", minHeight: "80px" })
+  );
+  await resizeBy("r", 100);
+  await resizeBy("b", 0, -200);
+  assert.deepEqual(await dimensions(), [160, 80]);
+  const end = await page.evaluate(() => window.fixture.endState());
+  assert.deepEqual([end.width, end.height], [160, 80]);
+  assert.deepEqual(errors, []);
+});
+
+test("resize steps preserve aspect ratio and prioritize its limiting axis", async () => {
+  await page.evaluate(async () => {
+    window.fixture.setEndFeedback(true);
+    await window.fixture.setProps({
+      width: 200,
+      height: 100,
+      minWidth: 0,
+      step: 50,
+      lockAspectRatio: true,
+    });
+  });
+  await resizeBy("rb", 46, 18);
+  assert.deepEqual(await dimensions(), [250, 125]);
+  await page.evaluate(() =>
+    window.fixture.setProps({ width: 200, height: 100 })
+  );
+  await resizeBy("b", 0, 26);
+  assert.deepEqual(await dimensions(), [300, 150]);
+  await page.evaluate(() =>
+    window.fixture.setProps({ width: 200, height: 100, maxHeight: "30%" })
+  );
+  await resizeBy("r", 100);
+  assert.deepEqual(await dimensions(), [240, 120]);
+});
+
+test("resize steps leave external dimensions and dragging unsnapped", async () => {
+  await page.evaluate(() =>
+    window.fixture.setProps({
+      width: 205,
+      height: 105,
+      minWidth: 0,
+      fitParent: false,
+      step: 50,
+    })
+  );
+  await resizeBy("r", 13);
+  assert.equal(await width(), 205);
+  await page.evaluate(() =>
+    window.fixture.setProps({ width: 217, height: 119 })
+  );
+  assert.deepEqual(await dimensions(), [217, 119]);
+  const header = await page.locator("#handle").boundingBox();
+  await page.mouse.move(header.x + 20, header.y + 15);
+  await page.mouse.down();
+  await page.mouse.move(header.x + 33, header.y + 32);
+  await page.mouse.up();
+  assert.deepEqual(await page.evaluate(() => window.fixture.state()), {
+    width: 217,
+    left: 13,
+    top: 17,
+  });
+});
+
+test("resize steps use CSS pixels under a transformed component", async () => {
+  await page.evaluate(async () => {
+    await window.fixture.setBoxStyle({
+      transform: "scale(2)",
+      transformOrigin: "top left",
+    });
+    await window.fixture.setProps({
+      width: 105,
+      height: 85,
+      minWidth: 0,
+      fitParent: false,
+      step: 20,
+    });
+  });
+  await resizeBy("r", 26);
+  assert.deepEqual(await dimensions(), [125, 85]);
+  assert.equal(await width(), 250);
+});
+
+test("percentage steps use separate axes and freeze parent dimensions during resize", async () => {
+  await page.evaluate(() =>
+    window.fixture.setProps({
+      width: 205,
+      height: 105,
+      minWidth: 0,
+      fitParent: false,
+      step: "10%",
+    })
+  );
+  await resizeBy("rb", 46, 26);
+  assert.deepEqual(await dimensions(), [285, 145]);
+  await page.evaluate(() => window.fixture.setParentWidth(1000));
+  const box = await page.locator(".resizable-rb").boundingBox();
+  const x = box.x + box.width / 2,
+    y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.evaluate(() => window.fixture.setParentWidth(600));
+  await page.mouse.move(x + 61, y + 26);
+  await page.mouse.up();
+  assert.deepEqual(await dimensions(), [385, 185]);
+  await resizeBy("rb", 31, 21);
+  assert.deepEqual(await dimensions(), [445, 225]);
+  await page.evaluate(() => window.fixture.setProps({ maxWidth: "450px" }));
+  await resizeBy("r", 100);
+  assert.equal(await width(), 450);
+  assert.deepEqual(errors, []);
+});
+
+test("percentage steps select the aspect ratio handle's primary axis", async () => {
+  await page.evaluate(async () => {
+    window.fixture.setEndFeedback(true);
+    await window.fixture.setParentWidth(1000);
+    await window.fixture.setProps({
+      width: 200,
+      height: 100,
+      minWidth: 0,
+      fitParent: false,
+      lockAspectRatio: true,
+      step: "10%",
+    });
+  });
+  await resizeBy("rb", 61, 26);
+  assert.deepEqual(await dimensions(), [300, 150]);
+  await page.evaluate(() =>
+    window.fixture.setProps({ width: 200, height: 100 })
+  );
+  await resizeBy("b", 0, 21);
+  assert.deepEqual(await dimensions(), [280, 140]);
+  await page.evaluate(() =>
+    window.fixture.setProps({ width: 200, height: 100, maxHeight: "35%" })
+  );
+  await resizeBy("r", 100);
+  assert.deepEqual(await dimensions(), [280, 140]);
+});
+
+test("percentage steps use unscaled parent client dimensions including padding", async () => {
+  await page.evaluate(async () => {
+    document.getElementById("parent").style.padding = "20px";
+    await window.fixture.setBoxStyle({
+      transform: "scale(2)",
+      transformOrigin: "top left",
+    });
+    await window.fixture.setProps({
+      width: 105,
+      height: 85,
+      minWidth: 0,
+      fitParent: false,
+      step: "10%",
+    });
+  });
+  await resizeBy("rb", 100, 50);
+  assert.deepEqual(await dimensions(), [189, 129]);
+  assert.equal(await width(), 378);
+});
+
+test("CSS maximums resolve on mount and follow parent size changes", async () => {
+  const props = {
+    minWidth: 0,
+    width: 700,
+    height: 350,
+    maxWidth: "calc(50% - 20px)",
+    maxHeight: "50%",
+  };
+  await page.goto(
+    `${origin}?props=${encodeURIComponent(JSON.stringify(props))}`
+  );
+  await page.waitForFunction(() => Boolean(window.fixture));
+  assert.deepEqual(await dimensions(), [380, 200]);
+  assert.equal(await page.evaluate(() => window.fixture.state().width), 380);
+  await page.evaluate(() => window.fixture.setParentWidth(600));
+  await page.waitForFunction(() => window.fixture.state().width === 280);
+  assert.deepEqual(await dimensions(), [280, 200]);
+  await page.evaluate(() => window.fixture.setParentWidth(1000));
+  await resizeBy("rb", 1000, 1000);
+  assert.deepEqual(await dimensions(), [480, 200]);
+  assert.deepEqual(errors, []);
+});
+
+for (const display of ["flex", "grid"]) {
+  test(`CSS expression measurement stays outside the ${display} layout`, async () => {
+    const query = new URLSearchParams({
+      props: JSON.stringify({
+        width: 600,
+        height: 300,
+        minWidth: 0,
+        fitParent: false,
+        maxWidth: "calc(50% - 20px)",
+        maxHeight: "calc(50% - 20px)",
+      }),
+      parentStyle: JSON.stringify({ display, gridTemplateColumns: "1fr" }),
+    });
+    await page.goto(`${origin}?${query}`);
+    await page.waitForFunction(() => Boolean(window.fixture));
+    await page.evaluate(async () => {
+      for (let i = 0; i < 4; i++) await new Promise(requestAnimationFrame);
+    });
+    assert.deepEqual(await dimensions(), [380, 180]);
+    assert.equal(await page.evaluate(() => window.fixture.state().width), 380);
+    assert.equal(await page.locator("#parent > *").count(), 1);
+    assert.deepEqual(errors, []);
+  });
+}
+
+for (const [property, value, expected] of [
+  ["maxHeight", "50%", 200],
+  ["minHeight", "200%", 800],
+  ["maxHeight", "calc(50% - 10px)", 190],
+  ["minHeight", "calc(200% + 10px)", 810],
+]) {
+  test(`${property}=${value} avoids circular sizing with an auto-height parent`, async () => {
+    const query = new URLSearchParams({
+      props: JSON.stringify({
+        width: 200,
+        height: 100,
+        minWidth: 0,
+        fitParent: false,
+        [property]: value,
+      }),
+      parentStyle: JSON.stringify({ height: "auto" }),
+    });
+    await page.goto(`${origin}?${query}`);
+    await page.waitForFunction(() => Boolean(window.fixture));
+    const heights = await page
+      .locator(".resizable-component")
+      .evaluate(async (el) => {
+        const values = [];
+        for (let i = 0; i < 8; i++) {
+          await new Promise(requestAnimationFrame);
+          values.push(parseFloat(getComputedStyle(el).height));
+        }
+        return values;
+      });
+    assert.deepEqual(heights, Array(8).fill(100));
+    assert.deepEqual(await dimensions(), [200, 100]);
+    await page.evaluate(() =>
+      window.fixture.setParentStyle({ height: "400px" })
+    );
+    await page.waitForFunction(
+      () => document.getElementById("parent").clientHeight === 400
+    );
+    await page.evaluate(() => window.fixture.setProps({ height: 300 }));
+    assert.deepEqual(await dimensions(), [200, expected]);
+    await page.evaluate(() =>
+      window.fixture.setParentStyle({ height: "auto" })
+    );
+    // Observe the removal of the definite height before assigning a new size.
+    await page.evaluate(async () => {
+      for (let i = 0; i < 3; i++) await new Promise(requestAnimationFrame);
+      await window.fixture.setProps({ height: 301 });
+    });
+    assert.deepEqual(await dimensions(), [200, 301]);
+    assert.equal(await page.locator("#parent > *").count(), 1);
+    assert.deepEqual(errors, []);
+  });
+}
+
+test("auto dimensions avoid circular fitParent bounds and still respect zero-height parents", async () => {
+  const query = new URLSearchParams({
+    props: JSON.stringify({
+      width: 200,
+      height: "auto",
+      minWidth: 0,
+      top: 20,
+      fitParent: true,
+      maxHeight: "50%",
+    }),
+    parentStyle: JSON.stringify({ height: "auto" }),
+  });
+  await page.goto(`${origin}?${query}`);
+  await page.waitForFunction(() => Boolean(window.fixture));
+  await page.evaluate(() =>
+    window.fixture.setContentStyle({ height: "100px" })
+  );
+  const heights = await page
+    .locator(".resizable-component")
+    .evaluate(async (el) => {
+      const values = [];
+      for (let i = 0; i < 8; i++) {
+        await new Promise(requestAnimationFrame);
+        values.push(parseFloat(getComputedStyle(el).height));
+      }
+      return values;
+    });
+  assert.deepEqual(heights, Array(8).fill(100));
+  await page.evaluate(() => window.fixture.setParentStyle({ height: "0px" }));
+  await page.waitForFunction(
+    () =>
+      getComputedStyle(document.querySelector(".resizable-component"))
+        .height === "0px"
+  );
+  await page.evaluate(() => window.fixture.setParentStyle({ height: "400px" }));
+  await page.waitForFunction(
+    () =>
+      getComputedStyle(document.querySelector(".resizable-component"))
+        .height === "100px"
+  );
+  await page.evaluate(() =>
+    window.fixture.setContentStyle({ height: "300px" })
+  );
+  assert.deepEqual(await dimensions(), [200, 200]);
+  await page.evaluate(() => window.fixture.setParentStyle({ height: "auto" }));
+  await page.waitForFunction(
+    () =>
+      getComputedStyle(document.querySelector(".resizable-component"))
+        .height === "300px"
+  );
+  assert.deepEqual(errors, []);
+});
+
+test("percentage maximums use and observe the positioned containing block", async () => {
+  await page.evaluate(async () => {
+    const containingBlock = document.createElement("div");
+    containingBlock.id = "containing-block";
+    containingBlock.style.cssText =
+      "position:relative;width:1000px;height:600px";
+    document.body.appendChild(containingBlock);
+    const parent = document.getElementById("parent");
+    const style = document.createElement("style");
+    style.textContent = "#parent { position: static !important }";
+    document.head.appendChild(style);
+    containingBlock.appendChild(parent);
+    await window.fixture.setBoxStyle({ position: "absolute" });
+    await window.fixture.setProps({
+      minWidth: 0,
+      fitParent: false,
+      width: 900,
+      height: 500,
+      maxWidth: "50%",
+      maxHeight: "50%",
+    });
+  });
+  assert.deepEqual(await dimensions(), [500, 300]);
+  await page.evaluate(() => {
+    document.getElementById("containing-block").style.width = "600px";
+  });
+  await page.waitForFunction(() => window.fixture.state().width === 300);
+  assert.deepEqual(await dimensions(), [300, 300]);
+});
+
+test("relative positioning resolves percentage limits against the parent's content box", async () => {
+  await page.evaluate(async () => {
+    document.getElementById("parent").style.padding = "20px";
+    await window.fixture.setBoxStyle({ position: "relative" });
+    await window.fixture.setProps({
+      minWidth: 0,
+      width: 700,
+      height: 350,
+      maxWidth: "50%",
+      maxHeight: "50%",
+    });
+  });
+  assert.deepEqual(await dimensions(), [400, 200]);
+  await page.evaluate(() =>
+    window.fixture.setProps({
+      maxWidth: "calc(50% - 20px)",
+      maxHeight: "calc(50% - 20px)",
+    })
+  );
+  assert.deepEqual(await dimensions(), [380, 180]);
+  await page.evaluate(() =>
+    window.fixture.setProps({
+      minWidth: "60%",
+      minHeight: "75%",
+      maxWidth: undefined,
+      maxHeight: undefined,
+      width: 10,
+      height: 10,
+    })
+  );
+  assert.deepEqual(await dimensions(), [480, 300]);
+  await page.evaluate(() => window.fixture.setParentWidth(1000));
+  await page.waitForFunction(() => window.fixture.state().width === 600);
+  assert.deepEqual(await dimensions(), [600, 300]);
+});
+
+test("viewport CSS expressions update maximums when the window changes", async () => {
+  const original = page.viewportSize();
+  try {
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await page.evaluate(() =>
+      window.fixture.setProps({
+        fitParent: false,
+        minWidth: 0,
+        width: 1000,
+        height: 700,
+        maxWidth: "calc(100vw * 2 / 3)",
+        maxHeight: "50vh",
+      })
+    );
+    assert.deepEqual(await dimensions(), [800, 400]);
+    await page.setViewportSize({ width: 900, height: 600 });
+    await page.waitForFunction(() => window.fixture.state().width === 600);
+    assert.deepEqual(await dimensions(), [600, 300]);
+    await page.evaluate(() => window.fixture.setProps({ maxWidth: "66vw" }));
+    assert.equal(await width(), 594);
+    await resizeBy("rb", 1000, 1000);
+    assert.deepEqual(await dimensions(), [594, 300]);
+  } finally {
+    await page.setViewportSize(original);
+  }
+});
+
+test("CSS maximums combine with aspect locking and box sizing", async () => {
+  await page.evaluate(async () => {
+    await window.fixture.setBoxStyle({
+      padding: "10px",
+      border: "2px solid black",
+      boxSizing: "content-box",
+      fontSize: "20px",
+    });
+    await window.fixture.setProps({
+      minWidth: 0,
+      width: 200,
+      height: 100,
+      maxWidth: "20em",
+      maxHeight: "calc(50% - 20px)",
+      lockAspectRatio: true,
+    });
+  });
+  await resizeBy("r", 1000);
+  assert.deepEqual(await dimensions(), [360, 180]);
+  assert.equal(await width(), 384);
+  await page.evaluate(async () => {
+    await window.fixture.setBoxStyle({
+      boxSizing: "border-box",
+      padding: "10px",
+      border: "2px solid black",
+    });
+    await window.fixture.setProps({ width: 200, height: 100 });
+  });
+  await resizeBy("r", 1000);
+  assert.deepEqual(await dimensions(), [360, 180]);
+  assert.equal(await width(), 360);
+});
+
+test("clearing CSS maximums preserves numeric zero as unlimited", async () => {
+  await page.evaluate(() =>
+    window.fixture.setProps({
+      minWidth: 0,
+      maxWidth: "250px",
+      maxHeight: "150px",
+    })
+  );
+  assert.deepEqual(await dimensions(), [250, 150]);
+  await page.evaluate(() =>
+    window.fixture.setProps({
+      maxWidth: 0,
+      maxHeight: "none",
+      width: 600,
+      height: 350,
+    })
+  );
+  assert.deepEqual(await dimensions(), [600, 350]);
+  await page.evaluate(() => window.fixture.setParentWidth(500));
+  await page.waitForTimeout(50);
+  assert.deepEqual(await dimensions(), [600, 350]);
+});
+
+test("auto sizes respect CSS maximums and remain constrained after resizing", async () => {
+  await page.evaluate(async () => {
+    await window.fixture.setContentStyle({ width: "600px", height: "350px" });
+    await window.fixture.setProps({
+      minWidth: 0,
+      width: "auto",
+      height: "auto",
+      maxWidth: "50%",
+      maxHeight: "calc(50% - 20px)",
+    });
+  });
+  assert.deepEqual(await dimensions(), [400, 180]);
+  await resizeBy("rb", 1000, 1000);
+  assert.deepEqual(await dimensions(), [400, 180]);
+});
+
+test("CSS minimums resolve on mount and follow parent size changes", async () => {
+  const props = {
+    width: 10,
+    height: 10,
+    minWidth: "calc(50% - 20px)",
+    minHeight: "25%",
+  };
+  await page.goto(
+    `${origin}?props=${encodeURIComponent(JSON.stringify(props))}`
+  );
+  await page.waitForFunction(() => Boolean(window.fixture));
+  assert.deepEqual(await dimensions(), [380, 100]);
+  await page.evaluate(() => window.fixture.setParentWidth(1000));
+  await page.waitForFunction(() => window.fixture.state().width === 480);
+  assert.deepEqual(await dimensions(), [480, 100]);
+  await resizeBy("rb", -1000, -1000);
+  assert.deepEqual(await dimensions(), [480, 100]);
+  await page.evaluate(() =>
+    window.fixture.setProps({
+      minWidth: "0",
+      minHeight: "invalid",
+      width: 20,
+      height: 30,
+    })
+  );
+  assert.deepEqual(await dimensions(), [20, 30]);
+  assert.deepEqual(errors, []);
+});
+
+test("viewport CSS minimums update when the window grows", async () => {
+  const original = page.viewportSize();
+  try {
+    await page.setViewportSize({ width: 1000, height: 600 });
+    await page.evaluate(() =>
+      window.fixture.setProps({
+        fitParent: false,
+        width: 10,
+        height: 10,
+        minWidth: "20vw",
+        minHeight: "calc(50vh - 20px)",
+      })
+    );
+    assert.deepEqual(await dimensions(), [200, 280]);
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await page.waitForFunction(() => window.fixture.state().width === 240);
+    assert.deepEqual(await dimensions(), [240, 380]);
+    await resizeBy("rb", -1000, -1000);
+    assert.deepEqual(await dimensions(), [240, 380]);
+  } finally {
+    await page.setViewportSize(original);
+  }
+});
+
+test("CSS minimums combine with aspect locking and respect upper bounds", async () => {
+  await page.evaluate(() =>
+    window.fixture.setProps({
+      width: 400,
+      height: 200,
+      minWidth: "40%",
+      minHeight: "50%",
+      maxWidth: "50%",
+      maxHeight: "75%",
+      lockAspectRatio: true,
+    })
+  );
+  await resizeBy("r", -1000);
+  assert.deepEqual(await dimensions(), [400, 200]);
+  await page.evaluate(() =>
+    window.fixture.setProps({ maxWidth: "45%", maxHeight: "35%" })
+  );
+  assert.deepEqual(await dimensions(), [360, 140]);
+  for (const [boxSizing, expected] of [
+    ["content-box", [756, 346]],
+    ["border-box", [780, 370]],
+  ]) {
+    await page.evaluate(async (boxSizing) => {
+      await window.fixture.setProps({
+        minWidth: 0,
+        minHeight: 0,
+        width: 200,
+        height: 100,
+      });
+      await window.fixture.setBoxStyle({
+        boxSizing,
+        padding: "10px",
+        border: "2px solid black",
+      });
+      await window.fixture.setProps({
+        width: 100,
+        height: 100,
+        left: 20,
+        top: 30,
+        minWidth: "200%",
+        minHeight: "200%",
+        maxWidth: undefined,
+        maxHeight: undefined,
+      });
+    }, boxSizing);
+    assert.deepEqual(await dimensions(), expected);
+  }
+});
+
+test("auto CSS minimums remain below maximums and parent boundaries", async () => {
+  await page.evaluate(async () => {
+    await window.fixture.setContentStyle({ width: "10px", height: "10px" });
+    await window.fixture.setBoxStyle({
+      boxSizing: "content-box",
+      padding: "10px",
+      border: "2px solid black",
+    });
+    await window.fixture.setProps({
+      width: "auto",
+      height: "auto",
+      minWidth: "40%",
+      minHeight: "50%",
+      maxWidth: "30%",
+      maxHeight: "25%",
+    });
+  });
+  assert.deepEqual(await dimensions(), [240, 100]);
+  await page.evaluate(() =>
+    window.fixture.setProps({
+      left: 20,
+      top: 30,
+      minWidth: "200%",
+      minHeight: "200%",
+      maxWidth: undefined,
+      maxHeight: undefined,
+    })
+  );
+  assert.deepEqual(await dimensions(), [756, 346]);
+  await page.evaluate(() => window.fixture.setParentWidth(500));
+  await page.waitForFunction(
+    () =>
+      parseFloat(
+        getComputedStyle(document.querySelector(".resizable-component")).width
+      ) === 456
+  );
+  assert.deepEqual(await dimensions(), [456, 346]);
+});
+
 test("resizing after a percentage update respects minimum and parent boundaries", async () => {
   await page.evaluate(() => window.fixture.setWidth("50%"));
   let box = await page.locator(".resizable-r").boundingBox();
@@ -519,8 +1176,8 @@ test("CSS sizes updated while maximized are resolved and constrained on restore"
     await window.fixture.setProps({
       width: "50%",
       height: "25%",
-      maxWidth: 350,
-      minHeight: 120,
+      maxWidth: "calc(50% - 50px)",
+      minHeight: "30%",
     });
   });
   assert.equal(await width(), 800);

@@ -57,16 +57,17 @@ export default {
 | Property            |  Data attribute    | Type    | Default | Description                                                                                                                                                                                                                                                                           |
 |:--------------------|------|:--------|:--------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | width               |   w   | [Number, String] | undefined   | Width in pixels, CSS length/percentage, or 'auto'
-| minWidth            |   minW   | Number  | 0    |  Minimum width     
-| maxWidth            |   maxW    | Number | undefined   | Maximum width
+| minWidth            |   minW   | [Number, String]  | 0    | Minimum width in pixels or a CSS length/percentage |
+| maxWidth            |   maxW    | [Number, String] | undefined   | Maximum width in pixels or a CSS length/percentage
 | height               |  h   | [Number, String]  | undefined    | Height in pixels, CSS length/percentage, or 'auto'                                                                                                                                                                                                                    |
-| minHeight        | minH | Number  | 0       | Minimum height                                                                                                                                                                                                                |
-| maxHeight    | maxH | Number  | undefined       | Maximum height                                                                                                                                                                                                                              |
+| minHeight        | minH | [Number, String]  | 0       | Minimum height in pixels or a CSS length/percentage |
+| maxHeight    | maxH | [Number, String]  | undefined       | Maximum height in pixels or a CSS length/percentage |
 | left          |   l    | [Number, String] | 0    | Offset left from parent                                                                                                                                                                                                                                                     |
 | top       | t | [Number, String] | 0   | Offset top from parent          
 | active     |    | Array | ['r', 'rb', 'b', 'lb', 'l', 'lt', 't', 'rt']   | Active handlers for resize    
 | fitParent    |     | Boolean | false  | Respect parent's size on resizing and dragging
 | lockAspectRatio | | Boolean | false | Preserve the width/height ratio during resizing
+| step | | [Number, String] | 0 | Resize increment in CSS pixels (number) or parent percentage (string); 0 disables snapping |
 | dragSelector | dragElements  |  String | undefined | Drag selector; omit or unset to prevent starting a drag
 | dragCancelSelector | | String | undefined | Additional selector for descendants that must not start a drag
 | maximize | | Boolean | false| Maximize element to parent size
@@ -84,6 +85,16 @@ Interactive elements (`input`, `textarea`, `select`, `button`, links, and editab
 ```
 
 Assigned CSS sizes such as `75%` and `calc(50% - 20px)` are resolved to pixels on mount or when the prop changes. They do not automatically follow later parent size changes. A manual resize also works in pixels. Numeric and resolved CSS sizes are clamped when size props or min/max limits change. `auto` remains CSS-driven until resizing starts. While maximized, geometry updates apply to the saved restore state; echoed values matching the displayed geometry are ignored.
+
+`minWidth`, `minHeight`, `maxWidth` and `maxHeight` also accept CSS lengths and expressions, such as `66vw`, `50vh`, `75%`, `20rem`, or `calc(100vw * 2 / 3)`. These limits are recalculated when the props, viewport, or parent size change. Increasing a minimum or decreasing a maximum clamps the current size; relaxing a limit does not resize it automatically. Percentages use the CSS containing block. Height limits containing percentages require a definite containing-block height for components in normal flow; otherwise they are ignored, matching CSS behavior and avoiding circular sizing. An `auto` height is also left unconstrained by `fitParent` when the parent's height depends on its contents. For maximums, `none` removes the limit and zero retains the existing unlimited behavior; a zero minimum allows shrinking to zero. `auto` sizes also respect the resolved limits. Maximums and parent boundaries take precedence over incompatible minimums. Maximize still fills the parent and applies updated limits to the saved restore size.
+
+```vue
+<vue-resizable min-width="20vw" min-height="10rem" max-width="calc(100vw * 2 / 3)" max-height="80vh" />
+```
+
+Use `:step="20"` to resize in 20px increments. Changes snap to the nearest step relative to the measured size at the start of the gesture, including when the starting size is not a multiple of the step. Fractional steps are supported. Minimum, maximum and parent boundaries take precedence and can produce a final size between steps. With `lockAspectRatio`, horizontal and corner handles step the width; vertical-only handles step the height, while the other dimension follows the ratio. Changes to `step` take effect on the next gesture. Dragging and external geometry updates keep their existing behavior.
+
+Use `step="10%"` for a percentage step. It is resolved separately against the parent's client width and height (including padding, excluding borders) at the start of each gesture. For a 300×200 parent, `10%` gives 30px width steps and 20px height steps. The resolved steps stay fixed during that gesture; the next gesture uses the current parent size. `0%` disables snapping. Only numbers and percentage strings are supported for `step`.
 
 ## Events
 
@@ -115,7 +126,7 @@ Run the regression tests with Node.js 22.12+:
 
 ```bash
 npm test
-npm run eslint:check -- src tests vite.config.mjs
+npm run eslint:check -- --ext .js,.mjs,.vue src docs tests vite.config.mjs
 npm run build
 ```
 

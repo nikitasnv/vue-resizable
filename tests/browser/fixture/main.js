@@ -9,11 +9,15 @@ const props = reactive({
   dragSelector: ".content",
   dragCancelSelector: ".custom-editor",
   maximize: false,
+  ...JSON.parse(new URLSearchParams(location.search).get("props") || "{}"),
 });
 const boxStyle = ref({});
 const contentStyle = ref({ height: "100%", background: "#eee" });
 const lateHandle = ref(false);
 const parentWidth = ref(800);
+const parentStyle = ref(
+  JSON.parse(new URLSearchParams(location.search).get("parentStyle") || "{}")
+);
 const component = ref();
 const events = [];
 let echoEnd = false;
@@ -36,6 +40,7 @@ createApp({
           height: "400px",
           position: "relative",
           margin: "60px",
+          ...parentStyle.value,
         },
       },
       [
@@ -116,6 +121,10 @@ window.fixture = {
   },
   async setParentWidth(value) {
     parentWidth.value = value;
+    await nextTick();
+  },
+  async setParentStyle(value) {
+    parentStyle.value = value;
     await nextTick();
   },
   async setProps(value) {

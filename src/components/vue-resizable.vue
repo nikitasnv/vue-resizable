@@ -20,9 +20,15 @@
 import {
   calculateRectangle,
   calculateRestoreRectangle,
+  calculateResizeSteps,
   constrainSize,
+  isValidResizeStep,
 } from "../utils/geometry";
 import { shouldCancelDrag } from "../utils/drag";
+import {
+  hasDefiniteParentHeight,
+  measureSizeLimit,
+} from "../utils/size-limits";
 
 const HANDLES = {
   "resizable-r": { horizontal: "end", cursor: "e-resize" },
@@ -47,6 +53,13 @@ const CALC_MASK = {
   h: 0b1000,
 };
 
+const SIZE_LIMITS = {
+  minWidth: "width",
+  maxWidth: "width",
+  minHeight: "height",
+  maxHeight: "height",
+};
+
 export default {
   name: "VResizable",
   props: {
@@ -56,11 +69,11 @@ export default {
     },
     minWidth: {
       default: 0,
-      type: Number,
+      type: [Number, String],
     },
     maxWidth: {
       default: undefined,
-      type: Number,
+      type: [Number, String],
     },
     height: {
       default: undefined,
@@ -68,11 +81,11 @@ export default {
     },
     minHeight: {
       default: 0,
-      type: Number,
+      type: [Number, String],
     },
     maxHeight: {
       default: undefined,
-      type: Number,
+      type: [Number, String],
     },
     left: {
       default: 0,
@@ -97,6 +110,11 @@ export default {
     lockAspectRatio: {
       default: false,
       type: Boolean,
+    },
+    step: {
+      default: 0,
+      type: [Number, String],
+      validator: isValidResizeStep,
     },
     dragSelector: {
       default: undefined,
@@ -140,20 +158,31 @@ export default {
       dragElements: [],
       ownedDragElements: [],
       dragObserver: null,
+      sizeObserver: null,
+      resolvedLimits: {},
+      limitParentSize: null,
     };
   },
   computed: {
     minW() {
-      return this.minWidth;
+      return typeof this.minWidth === "string"
+        ? this.resolvedLimits.minWidth ?? 0
+        : this.minWidth;
     },
     minH() {
-      return this.minHeight;
+      return typeof this.minHeight === "string"
+        ? this.resolvedLimits.minHeight ?? 0
+        : this.minHeight;
     },
     maxW() {
-      return this.maxWidth;
+      return typeof this.maxWidth === "string"
+        ? this.resolvedLimits.maxWidth
+        : this.maxWidth;
     },
     maxH() {
-      return this.maxHeight;
+      return typeof this.maxHeight === "string"
+        ? this.resolvedLimits.maxHeight
+        : this.maxHeight;
     },
     limits() {
       return {
@@ -180,24 +209,56 @@ export default {
         if (this.calcMap & CALC_MASK[attr]) {
           style[name] =
             typeof this[attr] === "number" ? `${this[attr]}px` : this[attr];
+          const maximum = { w: this.maxW, h: this.maxH }[attr];
+          if (
+            this[attr] === "auto" &&
+            !this.maximize &&
+            (attr === "w" || attr === "h")
+          ) {
+            const horizontal = attr === "w";
+            const minimum = horizontal ? this.minW : this.minH;
+            const position = horizontal ? this.l : this.t;
+            const available =
+              this.fitParent && this.limitParentSize
+                ? this.limitParentSize[name] -
+                  (typeof position === "number"
+                    ? position
+                    : this.readGeometry(horizontal ? "l" : "t")) -
+                  this.measureBoxSize()[name]
+                : Infinity;
+            const lower = constrainSize(minimum, 0, maximum, available);
+            const upper = constrainSize(Infinity, 0, maximum, available);
+            if (lower > 0)
+              style[horizontal ? "minWidth" : "minHeight"] = `${lower}px`;
+            if (Number.isFinite(upper))
+              style[horizontal ? "maxWidth" : "maxHeight"] = `${upper}px`;
+          }
         }
       }
       return style;
     },
   },
   watch: {
-    limits(value, previous) {
-      const target = this.prevState || this;
-      if (
-        value.minWidth !== previous.minWidth ||
-        value.maxWidth !== previous.maxWidth
-      )
-        this.updateGeometry("w", target.w, true);
-      if (
-        value.minHeight !== previous.minHeight ||
-        value.maxHeight !== previous.maxHeight
-      )
-        this.updateGeometry("h", target.h, true);
+    minWidth: "setupSizeLimits",
+    minHeight: "setupSizeLimits",
+    maxWidth: "setupSizeLimits",
+    maxHeight: "setupSizeLimits",
+    limits: {
+      handler(value, previous) {
+        const target = this.prevState || this;
+        if (
+          value.minWidth !== previous.minWidth ||
+          value.maxWidth !== previous.maxWidth
+        )
+          this.updateGeometry("w", target.w, true);
+        if (
+          value.minHeight !== previous.minHeight ||
+          value.maxHeight !== previous.maxHeight
+        )
+          this.updateGeometry("h", target.h, true);
+      },
+      // Normalize against the complete geometry prop batch, including coordinates.
+      flush: "post",
     },
     width(value) {
       this.updateGeometry("w", value);
@@ -223,6 +284,7 @@ export default {
     },
   },
   mounted() {
+    this.setupSizeLimits();
     this.w = constrainSize(
       this.width == null
         ? this.$el.parentElement.clientWidth
@@ -258,6 +320,8 @@ export default {
     this.emitEvent("mount");
   },
   beforeUnmount() {
+    this.sizeObserver?.disconnect();
+    window.removeEventListener("resize", this.refreshSizeLimits);
     this.dragObserver.disconnect();
     this.ownedDragElements.forEach((el) =>
       el.removeAttribute("data-resizable-drag")
@@ -266,6 +330,42 @@ export default {
     this.emitEvent("destroy");
   },
   methods: {
+    refreshSizeLimits() {
+      this.limitParentSize = {
+        width: this.$el.parentElement.clientWidth,
+        height:
+          this.h === "auto" && !hasDefiniteParentHeight(this.$el)
+            ? Infinity
+            : this.$el.parentElement.clientHeight,
+      };
+      this.resolvedLimits = Object.fromEntries(
+        Object.entries(SIZE_LIMITS).map(([name, dimension]) => [
+          name,
+          measureSizeLimit(this.$el, this[name], dimension),
+        ])
+      );
+    },
+    setupSizeLimits() {
+      this.refreshSizeLimits();
+      if (
+        Object.keys(SIZE_LIMITS).some((name) => typeof this[name] === "string")
+      ) {
+        window.addEventListener("resize", this.refreshSizeLimits);
+        if (!this.sizeObserver && window.ResizeObserver) {
+          this.sizeObserver = new window.ResizeObserver(this.refreshSizeLimits);
+          this.sizeObserver.observe(this.$el.parentElement);
+          if (
+            this.$el.offsetParent &&
+            this.$el.offsetParent !== this.$el.parentElement
+          )
+            this.sizeObserver.observe(this.$el.offsetParent);
+        }
+      } else {
+        window.removeEventListener("resize", this.refreshSizeLimits);
+        this.sizeObserver?.disconnect();
+        this.sizeObserver = null;
+      }
+    },
     measureBoxSize() {
       const style = window.getComputedStyle(this.$el);
       if (style.boxSizing === "border-box") return { width: 0, height: 0 };
@@ -305,6 +405,14 @@ export default {
       const target = this.prevState || this;
       const normalize = (size) => {
         if (attr !== "w" && attr !== "h") return size;
+        // A size and CSS limits can change together, before their watchers run.
+        if (
+          !force &&
+          Object.keys(SIZE_LIMITS).some(
+            (name) => typeof this[name] === "string"
+          )
+        )
+          this.refreshSizeLimits();
         const horizontal = attr === "w";
         const positionAttr = horizontal ? "l" : "t";
         const available =
@@ -327,6 +435,8 @@ export default {
       const next = typeof value === "number" ? normalize(value) : value;
       const changed = target[attr] !== next;
       target[attr] = next;
+      if (target === this && attr === "h" && value === "auto")
+        this.refreshSizeLimits();
       if (
         target === this &&
         changed &&
@@ -444,6 +554,10 @@ export default {
       if (event.cancelable) event.preventDefault();
       const rect = this.$el.getBoundingClientRect();
       const rectangle = this.measureRectangle();
+      const parentSize = {
+        width: this.$el.parentElement.clientWidth,
+        height: this.$el.parentElement.clientHeight,
+      };
       if (!dragging) {
         if (this.calcMap & CALC_MASK.w) this.w = rectangle.w;
         if (this.calcMap & CALC_MASK.h) this.h = rectangle.h;
@@ -461,9 +575,10 @@ export default {
         scaleY: rect.height / this.$el.offsetHeight || 1,
         rectangle,
         lockAspectRatio: this.lockAspectRatio,
+        step: calculateResizeSteps(this.step, parentSize),
         boxSize: this.measureBoxSize(),
-        parentWidth: this.$el.parentElement.clientWidth,
-        parentHeight: this.$el.parentElement.clientHeight,
+        parentWidth: parentSize.width,
+        parentHeight: parentSize.height,
         cursor: document.body.style.cursor,
       };
       document.body.style.cursor = HANDLES[handleClass || "drag-el"].cursor;
@@ -520,6 +635,7 @@ export default {
         fitParent: this.fitParent,
         disabledAttributes: this.disableAttributes,
         lockAspectRatio: interaction.lockAspectRatio,
+        step: interaction.step,
         boxSize: interaction.boxSize,
       });
       if (this.calcMap & CALC_MASK.l) this.l = rectangle.l;

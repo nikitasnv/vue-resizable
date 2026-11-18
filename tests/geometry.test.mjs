@@ -4,8 +4,150 @@ import {
   calculateAxis,
   calculateRectangle,
   calculateRestoreRectangle,
+  calculateResizeSteps,
   constrainSize,
+  isValidResizeStep,
+  snapResizeDelta,
 } from "../src/utils/geometry.js";
+
+test("resize deltas snap symmetrically and support fractional steps", () => {
+  for (const [delta, step, expected] of [
+    [9, 20, 0],
+    [10, 20, 20],
+    [31, 20, 40],
+    [-9, 20, 0],
+    [-10, 20, -20],
+    [-31, 20, -40],
+    [1.2, 0.5, 1],
+    [-1.3, 0.5, -1.5],
+  ])
+    assert.equal(snapResizeDelta(delta, step), expected);
+  for (const step of [0, -1, NaN, Infinity, Number.MIN_VALUE])
+    assert.equal(snapResizeDelta(13.25, step), 13.25);
+});
+
+test("percentage steps resolve each parent dimension without mutating context", () => {
+  const parentSize = Object.freeze({ width: 300, height: 200 });
+  for (const [step, expected] of [
+    [20, { width: 20, height: 20 }],
+    [0, { width: 0, height: 0 }],
+    ["10%", { width: 30, height: 20 }],
+    [" 2.5% ", { width: 7.5, height: 5 }],
+    ["+.5%", { width: 1.5, height: 1 }],
+    ["0%", { width: 0, height: 0 }],
+  ]) {
+    assert.equal(isValidResizeStep(step), true);
+    assert.deepEqual(calculateResizeSteps(step, parentSize), expected);
+  }
+  assert.deepEqual(calculateResizeSteps("10%", { width: 0, height: 200 }), {
+    width: 0,
+    height: 20,
+  });
+  assert.deepEqual(
+    calculateResizeSteps("10%", { width: Infinity, height: -100 }),
+    { width: 0, height: 0 }
+  );
+  assert.deepEqual(calculateResizeSteps("10%"), { width: 0, height: 0 });
+});
+
+test("step validation accepts numbers and percentages only", () => {
+  for (const step of [
+    -1,
+    Infinity,
+    NaN,
+    undefined,
+    null,
+    "20",
+    "10px",
+    "10vw",
+    "calc(10%)",
+    "-10%",
+    "Infinity%",
+    "10 %",
+    "",
+  ]) {
+    assert.equal(isValidResizeStep(step), false, String(step));
+    assert.deepEqual(calculateResizeSteps(step, { width: 300, height: 200 }), {
+      width: 0,
+      height: 0,
+    });
+  }
+});
+
+test("per-axis steps preserve opposite edges and leave dragging unsnapped", () => {
+  const step = Object.freeze(
+    calculateResizeSteps("10%", { width: 300, height: 200 })
+  );
+  const options = {
+    start: { l: 100, t: 100, w: 105, h: 85 },
+    step,
+    parentSize: { width: 300, height: 200 },
+  };
+  assert.deepEqual(
+    calculateRectangle({
+      ...options,
+      direction: { horizontal: "end", vertical: "end" },
+      delta: { x: 17, y: 11 },
+    }),
+    { l: 100, t: 100, w: 135, h: 105 }
+  );
+  assert.deepEqual(
+    calculateRectangle({
+      ...options,
+      direction: { horizontal: "start", vertical: "start" },
+      delta: { x: -17, y: -11 },
+    }),
+    { l: 70, t: 80, w: 135, h: 105 }
+  );
+  assert.deepEqual(
+    calculateRectangle({ ...options, dragging: true, delta: { x: 17, y: 11 } }),
+    { l: 117, t: 111, w: 105, h: 85 }
+  );
+});
+
+test("aspect ratio selects the corresponding per-axis percentage step", () => {
+  const options = {
+    start: { l: 0, t: 0, w: 200, h: 100 },
+    step: Object.freeze(
+      calculateResizeSteps("10%", { width: 500, height: 200 })
+    ),
+    parentSize: { width: 500, height: 200 },
+    lockAspectRatio: true,
+  };
+  assert.deepEqual(
+    calculateRectangle({
+      ...options,
+      direction: { horizontal: "end" },
+      delta: { x: 26, y: 0 },
+    }),
+    { l: 0, t: 0, w: 250, h: 125 }
+  );
+  assert.deepEqual(
+    calculateRectangle({
+      ...options,
+      direction: { vertical: "end" },
+      delta: { x: 0, y: 11 },
+    }),
+    { l: 0, t: 0, w: 240, h: 120 }
+  );
+  assert.deepEqual(
+    calculateRectangle({
+      ...options,
+      direction: { horizontal: "end", vertical: "end" },
+      delta: { x: 46, y: 18 },
+    }),
+    { l: 0, t: 0, w: 250, h: 125 }
+  );
+  assert.deepEqual(
+    calculateRectangle({
+      ...options,
+      direction: { horizontal: "end" },
+      delta: { x: 100, y: 0 },
+      limits: { maxHeight: 120 },
+    }),
+    { l: 0, t: 0, w: 240, h: 120 }
+  );
+});
 
 const axis = (options) =>
   calculateAxis({
@@ -71,6 +213,103 @@ test("disabled position and size remain unchanged", () => {
     position: 20,
     size: 200,
   });
+});
+
+for (const [handle, horizontal, vertical, x, y, l, t, w, h] of [
+  ["r", "end", undefined, 13, 0, 100, 100, 125, 85],
+  ["rb", "end", "end", 13, 13, 100, 100, 125, 105],
+  ["b", undefined, "end", 0, 13, 100, 100, 105, 105],
+  ["lb", "start", "end", -13, 13, 80, 100, 125, 105],
+  ["l", "start", undefined, -13, 0, 80, 100, 125, 85],
+  ["lt", "start", "start", -13, -13, 80, 80, 125, 105],
+  ["t", undefined, "start", 0, -13, 100, 80, 105, 105],
+  ["rt", "end", "start", 13, -13, 100, 80, 125, 105],
+]) {
+  test(`stepped ${handle} resize starts from the measured size and keeps its anchor`, () => {
+    assert.deepEqual(
+      calculateRectangle(
+        Object.freeze({
+          start: Object.freeze({ l: 100, t: 100, w: 105, h: 85 }),
+          delta: Object.freeze({ x, y }),
+          direction: Object.freeze({ horizontal, vertical }),
+          parentSize: Object.freeze({ width: 1000, height: 1000 }),
+          step: 20,
+        })
+      ),
+      { l, t, w, h }
+    );
+  });
+}
+
+test("resize boundaries win over steps without moving the opposite edge", () => {
+  assert.equal(axis({ delta: 80, step: 20, max: 255 }).size, 255);
+  assert.equal(axis({ delta: -1000, step: 20, min: 75 }).size, 75);
+  assert.equal(
+    axis({
+      position: 20,
+      delta: 1000,
+      step: 20,
+      fitParent: true,
+      parentSize: 257,
+      extraSize: 12,
+    }).size,
+    225
+  );
+  assert.deepEqual(
+    axis({
+      position: 25,
+      size: 100,
+      delta: -1000,
+      edge: "start",
+      step: 20,
+      fitParent: true,
+      parentSize: 300,
+    }),
+    { position: 0, size: 125 }
+  );
+  assert.deepEqual(
+    axis({
+      position: 30,
+      size: 105,
+      delta: 13,
+      edge: "start",
+      step: 20,
+      canMove: false,
+    }),
+    { position: 30, size: 85 }
+  );
+  assert.deepEqual(
+    axis({
+      position: 30,
+      size: 105,
+      delta: 13,
+      edge: "start",
+      step: 20,
+      canResize: false,
+    }),
+    { position: 43, size: 105 }
+  );
+});
+
+test("steps leave dragging and unstepped fractional resizing unchanged", () => {
+  const options = {
+    start: { l: 10, t: 20, w: 105, h: 85 },
+    delta: { x: 13.25, y: -12.5 },
+    parentSize: { width: 500, height: 500 },
+  };
+  assert.deepEqual(
+    calculateRectangle({ ...options, dragging: true, step: 20 }),
+    { l: 23.25, t: 7.5, w: 105, h: 85 }
+  );
+  for (const step of [0, -10, NaN, Infinity])
+    assert.deepEqual(
+      calculateRectangle({
+        ...options,
+        direction: { horizontal: "end", vertical: "end" },
+        step,
+      }),
+      { l: 10, t: 20, w: 118.25, h: 72.5 }
+    );
 });
 test("size normalization preserves zero and the legacy unlimited maximum", () => {
   assert.equal(constrainSize(0), 0);
@@ -238,6 +477,72 @@ const lockedOptions = {
   parentSize: { width: 1000, height: 1000 },
   lockAspectRatio: true,
 };
+
+test("aspect ratio steps use the handle's primary dimension after projection", () => {
+  for (const [direction, delta, expected] of [
+    [
+      { horizontal: "end" },
+      { x: 26, y: 0 },
+      { l: 100, t: 100, w: 250, h: 125 },
+    ],
+    [{ vertical: "end" }, { x: 0, y: 26 }, { l: 100, t: 100, w: 300, h: 150 }],
+    [
+      { horizontal: "end", vertical: "end" },
+      { x: 46, y: 18 },
+      { l: 100, t: 100, w: 250, h: 125 },
+    ],
+    [
+      { horizontal: "start", vertical: "start" },
+      { x: -46, y: -18 },
+      { l: 50, t: 75, w: 250, h: 125 },
+    ],
+  ])
+    assert.deepEqual(
+      calculateRectangle({ ...lockedOptions, direction, delta, step: 50 }),
+      expected
+    );
+  const options = {
+    ...lockedOptions,
+    step: 50,
+    direction: { horizontal: "end" },
+    delta: { x: 100, y: 0 },
+  };
+  assert.deepEqual(
+    calculateRectangle({ ...options, limits: { maxHeight: 135 } }),
+    { l: 100, t: 100, w: 270, h: 135 }
+  );
+  assert.deepEqual(
+    calculateRectangle({
+      ...options,
+      delta: { x: -100, y: 0 },
+      limits: { minHeight: 130 },
+    }),
+    { l: 100, t: 100, w: 260, h: 130 }
+  );
+  assert.deepEqual(
+    calculateRectangle({
+      ...options,
+      fitParent: true,
+      parentSize: { width: 1000, height: 220 },
+    }),
+    { l: 100, t: 100, w: 240, h: 120 }
+  );
+});
+
+test("aspect steps round halfway shrinking and growing consistently", () => {
+  for (const delta of [-25, 25]) {
+    const result = calculateRectangle({
+      ...lockedOptions,
+      start: { l: 100, t: 100, w: 150, h: 75 },
+      direction: { horizontal: "end" },
+      delta: { x: delta, y: 0 },
+      step: 50,
+    });
+    const expected = 150 + Math.sign(delta) * 50;
+    assert.ok(Math.abs(result.w - expected) < 1e-10);
+    assert.ok(Math.abs(result.h - expected / 2) < 1e-10);
+  }
+});
 for (const [handle, horizontal, vertical, x, y, l, t] of [
   ["r", "end", undefined, 100, 0, 100, 100],
   ["rb", "end", "end", 100, 50, 100, 100],

@@ -6,6 +6,33 @@ export function constrainSize(size, min = 0, max, available = Infinity) {
   return clamp(size, Math.min(min, upper), upper);
 }
 
+export function snapResizeDelta(delta, step = 0) {
+  if (!Number.isFinite(step) || step <= 0) return delta;
+  const steps = Math.abs(delta) / step;
+  if (!Number.isFinite(steps)) return delta;
+  const snapped = Math.sign(delta) * Math.round(steps) * step;
+  return snapped === 0 ? 0 : snapped;
+}
+
+export function isValidResizeStep(step) {
+  return typeof step === "number"
+    ? Number.isFinite(step) && step >= 0
+    : typeof step === "string" &&
+        /^\+?(?:\d+\.?\d*|\.\d+)%$/.test(step.trim()) &&
+        Number.isFinite(parseFloat(step));
+}
+
+export function calculateResizeSteps(step, parentSize = {}) {
+  if (!isValidResizeStep(step)) return { width: 0, height: 0 };
+  if (typeof step === "number") return { width: step, height: step };
+  const percentage = parseFloat(step) / 100;
+  const resolve = (dimension) => {
+    const pixels = percentage * parentSize[dimension];
+    return Number.isFinite(pixels) && pixels > 0 ? pixels : 0;
+  };
+  return { width: resolve("width"), height: resolve("height") };
+}
+
 export function calculateAxis({
   position,
   size,
@@ -18,6 +45,7 @@ export function calculateAxis({
   canMove = true,
   canResize = true,
   extraSize = 0,
+  step = 0,
 }) {
   if (edge === "drag" || (edge === "start" && !canResize)) {
     return {
@@ -41,7 +69,7 @@ export function calculateAxis({
     : parentSize - position - extraSize;
   // If the minimum cannot fit, the parent's boundary takes precedence.
   const nextSize = constrainSize(
-    size + (edge === "start" ? -delta : delta),
+    size + snapResizeDelta(edge === "start" ? -delta : delta, step),
     min,
     max,
     fitParent ? available : Infinity
@@ -64,7 +92,10 @@ export function calculateRectangle({
   disabledAttributes = [],
   boxSize = {},
   lockAspectRatio = false,
+  step = 0,
 }) {
+  const steps =
+    typeof step === "number" ? { width: step, height: step } : step || {};
   if (
     lockAspectRatio &&
     !dragging &&
@@ -82,6 +113,7 @@ export function calculateRectangle({
       fitParent,
       disabledAttributes,
       boxSize,
+      step: direction.horizontal ? steps.width : steps.height,
     });
   const horizontal = calculateAxis({
     position: start.l,
@@ -95,6 +127,7 @@ export function calculateRectangle({
     canMove: !disabledAttributes.includes("l"),
     canResize: !disabledAttributes.includes("w"),
     extraSize: boxSize.width,
+    step: steps.width,
   });
   const vertical = calculateAxis({
     position: start.t,
@@ -108,6 +141,7 @@ export function calculateRectangle({
     canMove: !disabledAttributes.includes("t"),
     canResize: !disabledAttributes.includes("h"),
     extraSize: boxSize.height,
+    step: steps.height,
   });
   return {
     l: horizontal.position,
@@ -126,6 +160,7 @@ function calculateAspectRatioRectangle({
   fitParent = false,
   disabledAttributes = [],
   boxSize = {},
+  step = 0,
 }) {
   if (disabledAttributes.includes("w") || disabledAttributes.includes("h"))
     return { ...start };
@@ -135,13 +170,23 @@ function calculateAspectRatioRectangle({
   const dw = horizontal ? delta.x * (horizontal === "start" ? -1 : 1) : 0;
   const dh = vertical ? delta.y * (vertical === "start" ? -1 : 1) : 0;
   // Corner motion is projected onto the rectangle's original diagonal.
-  const scale =
-    1 +
-    (horizontal && vertical
+  const scaleChange =
+    horizontal && vertical
       ? (dw * start.w + dh * start.h) / (start.w ** 2 + start.h ** 2)
       : horizontal
       ? dw / start.w
-      : dh / start.h);
+      : dh / start.h;
+  let scale = 1 + scaleChange;
+  if (Number.isFinite(step) && step > 0) {
+    const referenceSize = horizontal ? start.w : start.h;
+    const sizeChange =
+      horizontal && vertical
+        ? scaleChange * referenceSize
+        : horizontal
+        ? dw
+        : dh;
+    scale = 1 + snapResizeDelta(sizeChange, step) / referenceSize;
+  }
   const anchorRight =
     horizontal === "start" && !disabledAttributes.includes("l");
   const anchorBottom =

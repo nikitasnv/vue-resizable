@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - run: npm run eslint:check -- src tests vite.config.mjs
+      - run: npm run eslint:check -- --ext .js,.mjs,.vue src docs tests vite.config.mjs
       - run: npm test
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
